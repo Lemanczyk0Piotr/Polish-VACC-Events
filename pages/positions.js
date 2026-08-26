@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
+import { colors, shared } from '../lib/theme';
 
 const TYPES = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -78,7 +79,7 @@ export default function Positions() {
         </div>
       </div>
 
-      {error && <p style={{ color: '#f87171' }}>{error}</p>}
+      {error && <p style={{ color: colors.red }}>{error}</p>}
 
       {TYPES.filter((t) => grouped[t]?.length).map((type) => (
         <section key={type} style={{ marginBottom: 28 }}>
@@ -104,63 +105,52 @@ export default function Positions() {
 }
 
 const styles = {
-  h1: { fontSize: '1.8rem', margin: '0 0 4px', letterSpacing: '0.02em' },
-  sub: { color: '#94a3b8', margin: '0 0 20px' },
+  h1: shared.h1,
+  sub: shared.sub,
   controls: { marginBottom: 28 },
   search: {
+    ...shared.input,
     width: '100%',
     maxWidth: 480,
-    padding: '10px 14px',
-    borderRadius: 8,
-    border: '1px solid #1b2436',
-    background: '#121b2e',
-    color: '#e8edf7',
-    fontSize: '0.9rem',
     marginBottom: 12,
-    outline: 'none',
     display: 'block',
   },
   filterRow: { display: 'flex', gap: 8, flexWrap: 'wrap' },
   filterBtn: {
     padding: '6px 14px',
     borderRadius: 6,
-    border: '1px solid #1b2436',
-    background: '#121b2e',
-    color: '#94a3b8',
+    border: `1px solid ${colors.border}`,
+    background: colors.card,
+    color: colors.muted,
     fontSize: '0.75rem',
     fontWeight: 700,
     letterSpacing: '0.03em',
     cursor: 'pointer',
   },
-  filterBtnActive: { background: '#f5a623', color: '#0b1220', borderColor: '#f5a623' },
+  filterBtnActive: { background: colors.amber, color: '#fff', borderColor: colors.amber },
   sectionHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: 8,
     marginBottom: 12,
     paddingBottom: 6,
-    borderBottom: '1px solid #1b2436',
+    borderBottom: `1px solid ${colors.border}`,
   },
   sectionLabel: {
     fontWeight: 700,
     fontSize: '0.8rem',
     letterSpacing: '0.05em',
-    color: '#f5a623',
+    color: colors.amber,
   },
-  sectionCount: { color: '#94a3b8', fontSize: '0.8rem' },
+  sectionCount: { color: colors.muted, fontSize: '0.8rem' },
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
     gap: 12,
   },
-  card: {
-    padding: '14px 16px',
-    borderRadius: 8,
-    border: '1px solid #1b2436',
-    background: '#121b2e',
-  },
+  card: shared.card,
   cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' },
   callsign: { fontWeight: 700, fontSize: '0.9rem' },
-  freq: { color: '#60a5fa', fontSize: '0.85rem', fontFamily: 'monospace' },
-  posName: { color: '#94a3b8', fontSize: '0.8rem', marginTop: 4 },
+  freq: { color: colors.blue, fontSize: '0.85rem', fontFamily: 'monospace' },
+  posName: { color: colors.muted, fontSize: '0.8rem', marginTop: 4 },
 };

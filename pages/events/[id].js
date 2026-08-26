@@ -241,7 +241,7 @@ export default function EventScheduler() {
               <div key={t} style={styles.summaryGroup}>
                 <span style={{ color: positionTypeColor[t], fontWeight: 700, fontSize: '0.72rem' }}>{t}</span>
                 {list.map((a) => (
-                  <span key={a.id} style={{ color: '#fff', fontSize: '0.78rem' }}>
+                  <span key={a.id} style={{ color: colors.text, fontSize: '0.78rem' }}>
                     {a.controllers?.name} ({a.controllers?.rating})
                     {a.student?.name ? ` / uczeń: ${a.student.name}` : ''}
                   </span>
@@ -309,7 +309,7 @@ export default function EventScheduler() {
                     {posAssignments.map((a) => (
                       <div key={a.id} style={styles.assignedRow}>
                         <div>
-                          <span style={{ color: '#fff', fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
+                          <span style={{ color: colors.text, fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
                           <span style={{ color: colors.blue, fontSize: '0.75rem' }}>{a.controllers?.rating}</span>
                           {a.student?.name && (
                             <span style={{ color: colors.purple, fontSize: '0.75rem' }}> / uczeń: {a.student.name}</span>

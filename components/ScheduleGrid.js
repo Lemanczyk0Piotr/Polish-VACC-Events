@@ -135,7 +135,7 @@ export default function ScheduleGrid({ event, assignments }) {
                           // rounding otherwise leaves the gridline peeking through).
                           width: `calc(${width}% + 1px)`,
                           borderColor: color,
-                          background: hexToRgba(color, 0.16),
+                          background: hexToRgba(color, 0.9),
                         }}
                       >
                         <div style={styles.barName}>

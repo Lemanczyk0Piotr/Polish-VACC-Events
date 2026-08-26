@@ -228,7 +228,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
               style={{
                 ...styles.kindPill,
                 borderColor: m.color,
-                color: form.kind === k ? '#0b1220' : m.color,
+                color: form.kind === k ? '#fff' : m.color,
                 background: form.kind === k ? m.color : 'transparent',
               }}
             >
