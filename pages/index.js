@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import Layout from '../components/Layout';
 
 export default function Home() {
   const [bookings, setBookings] = useState(null);
@@ -15,7 +16,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main style={styles.main}>
+    <Layout>
       <div style={styles.card}>
         <h1 style={styles.h1}>PLVACC — Zapisy na wydarzenia</h1>
         <p style={styles.p}>
@@ -23,7 +24,7 @@ export default function Home() {
         </p>
         <span style={styles.badge}>🚧 W budowie</span>
 
-        <h2 style={styles.h2}>Podgląd zapisów (na żywo z API)</h2>
+        <h2 style={styles.h2}>Podgląd zapisów (na żywo z PL-VACC API)</h2>
         {error && <p style={{ color: '#f87171' }}>{error}</p>}
         {!bookings && !error && <p style={styles.p}>Ładowanie…</p>}
         {bookings && bookings.length === 0 && <p style={styles.p}>Brak zapisów.</p>}
@@ -37,24 +38,14 @@ export default function Home() {
           </ul>
         )}
       </div>
-    </main>
+    </Layout>
   );
 }
 
 const styles = {
-  main: {
-    minHeight: '100vh',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    background: '#0b1220',
-    color: '#e8edf7',
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-  },
   card: {
     maxWidth: 560,
-    margin: 24,
+    margin: '40px auto',
     padding: 40,
     borderRadius: 16,
     background: '#121b2e',
