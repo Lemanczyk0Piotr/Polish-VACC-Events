@@ -83,11 +83,17 @@ export default function ScheduleGrid({ event, assignments }) {
       <div style={styles.axisRow}>
         <div style={styles.labelCol} />
         <div style={styles.trackCol}>
-          {ticks.map((t, i) => (
-            <span key={i} style={{ ...styles.tick, left: `${t.pct}%` }}>
-              {t.isHour ? t.label : '·'}
-            </span>
-          ))}
+          {ticks.map((t, i) => {
+            // Center every label except the very first/last, which would
+            // otherwise render half off the edge of the (clipped) container.
+            const edgeTransform =
+              t.pct <= 0.5 ? 'translateX(0)' : t.pct >= 99.5 ? 'translateX(-100%)' : 'translateX(-50%)';
+            return (
+              <span key={i} style={{ ...styles.tick, left: `${t.pct}%`, transform: edgeTransform }}>
+                {t.isHour ? t.label : '·'}
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -124,7 +130,10 @@ export default function ScheduleGrid({ event, assignments }) {
                         style={{
                           ...styles.bar,
                           left: `${left}%`,
-                          width: `${width}%`,
+                          // +1px closes the hairline seam that shows up between
+                          // back-to-back shifts on the same position (sub-pixel
+                          // rounding otherwise leaves the gridline peeking through).
+                          width: `calc(${width}% + 1px)`,
                           borderColor: color,
                           background: hexToRgba(color, 0.16),
                         }}
