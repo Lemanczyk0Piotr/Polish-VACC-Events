@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
+import ScheduleGrid from '../../components/ScheduleGrid';
 import { supabase } from '../../lib/supabaseClient';
 import { colors, shared, positionTypeColor, formatDatePl, formatTimeZ } from '../../lib/theme';
 
@@ -15,6 +16,22 @@ function sortControllers(list) {
   });
 }
 
+function pad(n) {
+  return String(n).padStart(2, '0');
+}
+function toMin(t) {
+  const [h, m] = t.split(':').map(Number);
+  return h * 60 + m;
+}
+function minToHHMM(min) {
+  const m = ((min % 1440) + 1440) % 1440;
+  return `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+}
+function utcHHMM(iso) {
+  const d = new Date(iso);
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
 export default function EventScheduler() {
   const router = useRouter();
   const { id } = router.query;
@@ -27,6 +44,7 @@ export default function EventScheduler() {
   const [staffedOnly, setStaffedOnly] = useState(false);
   const [addingFor, setAddingFor] = useState(null); // position id
   const [notesDraft, setNotesDraft] = useState('');
+  const [showGrid, setShowGrid] = useState(false);
 
   const load = () => {
     if (!id) return;
@@ -46,7 +64,9 @@ export default function EventScheduler() {
       .then(({ data }) => setControllers(data || []));
     supabase
       .from('event_assignments')
-      .select('*, controllers(name, rating, is_mentor), positions(callsign, type)')
+      .select(
+        '*, controllers:controllers!event_assignments_controller_id_fkey(id, name, rating, is_mentor), student:controllers!event_assignments_student_id_fkey(id, name, rating), positions(callsign, type, frequency)'
+      )
       .eq('event_id', id)
       .then(({ data, error }) => {
         if (error) setError(error.message);
@@ -85,11 +105,42 @@ export default function EventScheduler() {
     return g;
   }, [assignments]);
 
-  const totalMinutes = event?.time_start && event?.time_end
-    ? Math.max(0, (toMin(event.time_end) - toMin(event.time_start) + 1440) % 1440) || 180
-    : 180;
+  // Default duration (minutes) used to prefill a brand-new slot when a
+  // position has no assignments yet.
+  const defaultDurationMin =
+    event?.time_start && event?.time_end
+      ? (() => {
+          const d = ((toMin(event.time_end.slice(0, 5)) - toMin(event.time_start.slice(0, 5))) % 1440 + 1440) % 1440;
+          return d || 1440;
+        })()
+      : 180;
 
-  const addAssignment = async (positionId, controllerId, minutes) => {
+  const addAssignment = async (positionId, controllerId, studentId, startHHMM, endHHMM) => {
+    if (!event.event_date) {
+      alert('Wydarzenie nie ma ustawionej daty.');
+      return;
+    }
+    let startMin = toMin(startHHMM);
+    let endMin = toMin(endHHMM);
+    if (endMin <= startMin) endMin += 1440;
+
+    const dayMs = 24 * 3600 * 1000;
+    const baseDate = new Date(`${event.event_date}T00:00:00Z`).getTime();
+    const startIso = new Date(baseDate + startMin * 60000).toISOString();
+    const endIso = new Date(baseDate + endMin * 60000).toISOString();
+
+    // Client-side overlap guard for this position.
+    const existing = assignments.filter((a) => a.position_id === positionId && a.time_start && a.time_end);
+    const overlap = existing.some((a) => {
+      const aS = new Date(a.time_start).getTime();
+      const aE = new Date(a.time_end).getTime();
+      return new Date(startIso).getTime() < aE && new Date(endIso).getTime() > aS;
+    });
+    if (overlap) {
+      alert('Ten przedział czasu nachodzi na już przypisanego kontrolera na tej pozycji.');
+      return;
+    }
+
     const res = await fetch('/api/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -97,14 +148,17 @@ export default function EventScheduler() {
         event_id: id,
         position_id: positionId,
         controller_id: controllerId,
-        session_minutes: minutes,
+        student_id: studentId || null,
+        time_start: startIso,
+        time_end: endIso,
       }),
     });
     if (res.ok) {
       setAddingFor(null);
       load();
     } else {
-      alert('Nie udało się dodać kontrolera.');
+      const data = await res.json().catch(() => ({}));
+      alert(data.error || 'Nie udało się dodać kontrolera.');
     }
   };
 
@@ -189,6 +243,7 @@ export default function EventScheduler() {
                 {list.map((a) => (
                   <span key={a.id} style={{ color: '#fff', fontSize: '0.78rem' }}>
                     {a.controllers?.name} ({a.controllers?.rating})
+                    {a.student?.name ? ` / uczeń: ${a.student.name}` : ''}
                   </span>
                 ))}
               </div>
@@ -207,10 +262,22 @@ export default function EventScheduler() {
         >
           {staffedOnly ? '✓ TYLKO OBSADZONE' : 'TYLKO OBSADZONE'}
         </button>
+        <button
+          style={{ ...shared.btnPrimary, ...(showGrid ? {} : {}) }}
+          onClick={() => setShowGrid((v) => !v)}
+        >
+          {showGrid ? '✕ UKRYJ HARMONOGRAM' : '⊞ GENERUJ HARMONOGRAM'}
+        </button>
         <button style={shared.btnDanger} onClick={clearAll} disabled={!assignments || assignments.length === 0}>
           WYCZYŚĆ WSZYSTKO
         </button>
       </div>
+
+      {showGrid && (
+        <div style={{ ...shared.card, marginBottom: 24, overflowX: 'auto' }}>
+          <ScheduleGrid event={event} assignments={assignments || []} />
+        </div>
+      )}
 
       {TYPE_ORDER.map((t) => {
         const list = grouped[t] || [];
@@ -219,46 +286,66 @@ export default function EventScheduler() {
           <section key={t} style={{ marginBottom: 24 }}>
             <div style={styles.typeHeader(positionTypeColor[t])}>{t}</div>
             <div style={styles.posGrid}>
-              {list.map(({ position, assignments: posAssignments }) => (
-                <div key={position.id} style={shared.card}>
-                  <div style={styles.posHead}>
-                    <span style={{ fontWeight: 700 }}>{position.callsign}</span>
-                    {position.frequency && <span style={styles.freq}>{position.frequency}</span>}
-                  </div>
-                  {posAssignments.length === 0 && (
-                    <div style={styles.gapLine}>- - - BRAK - - -</div>
-                  )}
-                  {posAssignments.map((a) => (
-                    <div key={a.id} style={styles.assignedRow}>
-                      <div>
-                        <span style={{ color: '#fff', fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
-                        <span style={{ color: colors.blue, fontSize: '0.75rem' }}>{a.controllers?.rating}</span>
-                        {a.session_minutes && (
-                          <div style={{ fontSize: '0.7rem', color: colors.mutedDim }}>
-                            {a.session_minutes} min
-                          </div>
-                        )}
-                      </div>
-                      <button style={styles.removeBtn} onClick={() => removeAssignment(a.id)}>
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+              {list.map(({ position, assignments: posAssignments }) => {
+                // Chain default start time from the latest existing shift end.
+                const withTimes = posAssignments.filter((a) => a.time_start && a.time_end);
+                let defaultStartHHMM = event.time_start ? event.time_start.slice(0, 5) : '00:00';
+                if (withTimes.length > 0) {
+                  const latestEnd = withTimes.reduce(
+                    (max, a) => Math.max(max, new Date(a.time_end).getTime()),
+                    0
+                  );
+                  defaultStartHHMM = utcHHMM(new Date(latestEnd).toISOString());
+                }
+                const defaultEndHHMM = minToHHMM(toMin(defaultStartHHMM) + defaultDurationMin);
 
-                  {addingFor === position.id ? (
-                    <AddControllerForm
-                      controllers={controllers ? sortControllers(controllers) : []}
-                      defaultMinutes={totalMinutes}
-                      onCancel={() => setAddingFor(null)}
-                      onAdd={(controllerId, minutes) => addAssignment(position.id, controllerId, minutes)}
-                    />
-                  ) : (
-                    <button style={styles.addBtn} onClick={() => setAddingFor(position.id)}>
-                      + DODAJ KONTROLERA
-                    </button>
-                  )}
-                </div>
-              ))}
+                return (
+                  <div key={position.id} style={shared.card}>
+                    <div style={styles.posHead}>
+                      <span style={{ fontWeight: 700 }}>{position.callsign}</span>
+                      {position.frequency && <span style={styles.freq}>{position.frequency}</span>}
+                    </div>
+                    {posAssignments.length === 0 && <div style={styles.gapLine}>- - - BRAK - - -</div>}
+                    {posAssignments.map((a) => (
+                      <div key={a.id} style={styles.assignedRow}>
+                        <div>
+                          <span style={{ color: '#fff', fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
+                          <span style={{ color: colors.blue, fontSize: '0.75rem' }}>{a.controllers?.rating}</span>
+                          {a.student?.name && (
+                            <span style={{ color: colors.purple, fontSize: '0.75rem' }}> / uczeń: {a.student.name}</span>
+                          )}
+                          <div style={{ fontSize: '0.7rem', color: colors.mutedDim }}>
+                            {a.time_start && a.time_end
+                              ? `${utcHHMM(a.time_start)}-${utcHHMM(a.time_end)}z`
+                              : a.session_minutes
+                              ? `${a.session_minutes} min`
+                              : ''}
+                          </div>
+                        </div>
+                        <button style={styles.removeBtn} onClick={() => removeAssignment(a.id)}>
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+
+                    {addingFor === position.id ? (
+                      <AddControllerForm
+                        controllers={controllers ? sortControllers(controllers) : []}
+                        defaultStart={defaultStartHHMM}
+                        defaultEnd={defaultEndHHMM}
+                        onCancel={() => setAddingFor(null)}
+                        onAdd={(controllerId, studentId, start, end) =>
+                          addAssignment(position.id, controllerId, studentId, start, end)
+                        }
+                      />
+                    ) : (
+                      <button style={styles.addBtn} onClick={() => setAddingFor(position.id)}>
+                        + DODAJ KONTROLERA
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </section>
         );
@@ -267,13 +354,25 @@ export default function EventScheduler() {
   );
 }
 
-function AddControllerForm({ controllers, defaultMinutes, onCancel, onAdd }) {
+function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, onAdd }) {
   const [controllerId, setControllerId] = useState('');
-  const [minutes, setMinutes] = useState(defaultMinutes);
+  const [studentId, setStudentId] = useState('');
+  const [start, setStart] = useState(defaultStart);
+  const [end, setEnd] = useState(defaultEnd);
+
+  const selected = controllers.find((c) => c.id === controllerId);
+  const isMentor = !!selected?.is_mentor;
 
   return (
     <div style={styles.addForm}>
-      <select style={{ ...shared.input, width: '100%' }} value={controllerId} onChange={(e) => setControllerId(e.target.value)}>
+      <select
+        style={{ ...shared.input, width: '100%' }}
+        value={controllerId}
+        onChange={(e) => {
+          setControllerId(e.target.value);
+          setStudentId('');
+        }}
+      >
         <option value="">— wybierz kontrolera —</option>
         {controllers.map((c) => (
           <option key={c.id} value={c.id}>
@@ -282,19 +381,32 @@ function AddControllerForm({ controllers, defaultMinutes, onCancel, onAdd }) {
           </option>
         ))}
       </select>
+
+      {isMentor && (
+        <select style={{ ...shared.input, width: '100%', marginTop: 8 }} value={studentId} onChange={(e) => setStudentId(e.target.value)}>
+          <option value="">— uczeń (opcjonalnie) —</option>
+          {controllers
+            .filter((c) => c.id !== controllerId)
+            .map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name} {c.rating ? `(${c.rating})` : ''}
+              </option>
+            ))}
+        </select>
+      )}
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+        <input type="time" style={shared.input} value={start} onChange={(e) => setStart(e.target.value)} />
+        <span style={{ color: colors.mutedDim }}>–</span>
+        <input type="time" style={shared.input} value={end} onChange={(e) => setEnd(e.target.value)} />
+        <span style={{ color: colors.mutedDim, fontSize: '0.7rem' }}>Z</span>
+      </div>
+
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-        <input
-          type="number"
-          min="1"
-          style={{ ...shared.input, width: 90 }}
-          value={minutes}
-          onChange={(e) => setMinutes(Number(e.target.value))}
-        />
-        <span style={{ alignSelf: 'center', color: colors.mutedDim, fontSize: '0.75rem' }}>min</span>
         <button
           style={{ ...shared.btnPrimary, marginLeft: 'auto' }}
           disabled={!controllerId}
-          onClick={() => onAdd(controllerId, minutes)}
+          onClick={() => onAdd(controllerId, studentId, start, end)}
         >
           DODAJ
         </button>
@@ -304,11 +416,6 @@ function AddControllerForm({ controllers, defaultMinutes, onCancel, onAdd }) {
       </div>
     </div>
   );
-}
-
-function toMin(t) {
-  const [h, m] = t.split(':').map(Number);
-  return h * 60 + m;
 }
 
 const styles = {
@@ -347,7 +454,7 @@ const styles = {
   },
   summaryGroups: { display: 'flex', flexDirection: 'column', gap: 6 },
   summaryGroup: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' },
-  controlsRow: { display: 'flex', gap: 10, marginBottom: 20 },
+  controlsRow: { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
   toggleActive: { borderColor: colors.amber, color: colors.amber },
   typeHeader: (color) => ({
     fontWeight: 700,
