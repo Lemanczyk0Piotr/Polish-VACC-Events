@@ -6,19 +6,36 @@ kontrolerskie podczas tych wydarzeń. Docelowo migracja z istniejącej aplikacji
 
 ## Status projektu
 
-🚧 W budowie. Zrobione:
+Ciemny motyw "Night Vector" (jak w oryginalnej aplikacji Base44) na całej stronie.
+Zrobione:
 - Baza danych (Supabase/Postgres): tabele `controllers`, `positions`, `events`,
-  `event_assignments`, RLS włączone (publiczny odczyt).
+  `event_assignments`, RLS włączone (publiczny odczyt, zapis wyłącznie przez API).
 - Integracja z PL-VACC API (`/api/bookings`) — token ukryty po stronie serwera.
-- Strony: **Roster** (lista kontrolerów z bazy, z przyciskiem ręcznej synchronizacji),
-  **Positions** (pozycje ATC z bazy).
+- **Layout**: nawigacja z linkami zewnętrznymi (PLVACC, ACC SECTORS, STATSIM, MyVATSIM).
+- **OPS Briefing** (`/`): najbliższe/ostatnie wydarzenie, odliczanie "TIME TO EVENT",
+  statystyki (aktywni/zarejestrowani kontrolerzy, liczba wydarzeń), pasek boczny
+  z wydarzeniami ±1 tydzień.
+- **Events** (`/events`): lista z kolorowym oznaczeniem rodzaju (EVENT/EXAM/ANNOUNCEMENT),
+  osobne przyciski tworzenia dla każdego rodzaju, baner, notatki, przełącznik "pokaż
+  zakończone", tworzenie/edycja/usuwanie.
+- **Event Scheduler** (`/events/[id]`): baner + notatki + link Canva, podsumowanie
+  przypisanych kontrolerów (CTR→APP→TWR→GND→DEL), pozycje pogrupowane wg typu,
+  dodawanie/usuwanie kontrolerów na pozycji, filtr "tylko obsadzone", czyszczenie
+  całego harmonogramu.
+- **Roster** (`/roster`): sortowanie po nazwisku/CID/ratingu, odznaki MENTOR/PE/CE
+  (S2-CE, S3-CE, C1-CE z regułami ostrzegawczymi na czerwono), edycja statusu/mentora/
+  endorsementów, synchronizacja z PL-VACC API.
+- **Positions** (`/positions`): pozycje ATC z bazy (92 pozycje, ATIS pominięty).
+- **Top Controllers** (`/top-controllers`): ranking wg łącznego czasu (tylko zakończone
+  wydarzenia), rozwijalna lista sesji per kontroler, eksport CSV.
 - Automatyczna synchronizacja rostera z PL-VACC API:
   - przycisk "Sync now" na stronie Roster (`/api/sync/roster`),
   - cron co noc o 22:00 UTC / ~00:00 czasu polskiego (`/api/cron/roster`,
     skonfigurowany w `vercel.json` — **wymaga wdrożenia na Vercel**, patrz niżej).
 
-Do zrobienia: Events (lista + kalendarz), Scheduler (przypisywanie kontrolerów +
-oś czasu), Top Controllers (ranking), pełna strona Ops Briefing.
+Do zrobienia / możliwe następne kroki: kalendarz miesięczny na stronie Events,
+oś czasu (Gantt) w Schedulerze, upload banera z pliku (na razie wklejasz URL obrazka),
+parowanie mentor/uczeń, filtrowanie po typie pozycji w Schedulerze.
 
 ## Architektura
 

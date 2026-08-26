@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
+import { colors, shared, RATING_RANK, endorsementBadges } from '../lib/theme';
+
+const ENDORSEMENT_OPTIONS = ['PE', 'S2-CE', 'S3-CE', 'C1-CE'];
 
 export default function Roster() {
   const [controllers, setControllers] = useState(null);
@@ -8,21 +11,21 @@ export default function Roster() {
   const [search, setSearch] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [syncMsg, setSyncMsg] = useState(null);
+  const [sortKey, setSortKey] = useState('name');
+  const [sortDir, setSortDir] = useState('asc');
+  const [editing, setEditing] = useState(null);
 
   const loadControllers = () => {
     supabase
       .from('controllers')
       .select('*')
-      .order('name', { ascending: true })
       .then(({ data, error }) => {
         if (error) setError(error.message);
         else setControllers(data);
       });
   };
 
-  useEffect(() => {
-    loadControllers();
-  }, []);
+  useEffect(loadControllers, []);
 
   const handleSync = async () => {
     setSyncing(true);
@@ -40,29 +43,61 @@ export default function Roster() {
     }
   };
 
-  const filtered = useMemo(() => {
+  const toggleSort = (key) => {
+    if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  };
+
+  const filteredSorted = useMemo(() => {
     if (!controllers) return [];
     const q = search.trim().toLowerCase();
-    if (!q) return controllers;
-    return controllers.filter(
+    let list = controllers.filter(
       (c) =>
+        !q ||
         c.name.toLowerCase().includes(q) ||
         (c.cid || '').toLowerCase().includes(q) ||
         (c.rating || '').toLowerCase().includes(q)
     );
-  }, [controllers, search]);
+    const dir = sortDir === 'asc' ? 1 : -1;
+    list = [...list].sort((a, b) => {
+      // Inactive always last, regardless of sort.
+      const aInactive = a.status === 'inactive';
+      const bInactive = b.status === 'inactive';
+      if (aInactive !== bInactive) return aInactive ? 1 : -1;
+      // OBS rating always after everyone else within active/visitor.
+      const aObs = a.rating === 'OBS';
+      const bObs = b.rating === 'OBS';
+      if (aObs !== bObs) return aObs ? 1 : -1;
+
+      if (sortKey === 'cid') return dir * (Number(a.cid || 0) - Number(b.cid || 0));
+      if (sortKey === 'rating') {
+        const ra = RATING_RANK[a.rating] ?? -1;
+        const rb = RATING_RANK[b.rating] ?? -1;
+        return dir * (rb - ra);
+      }
+      return dir * a.name.localeCompare(b.name);
+    });
+    return list;
+  }, [controllers, search, sortKey, sortDir]);
+
+  const activeCount = controllers?.filter((c) => c.status !== 'inactive').length;
+
+  const sortArrow = (key) => (sortKey === key ? (sortDir === 'asc' ? ' ▲' : ' ▼') : '');
 
   return (
     <Layout>
       <div style={styles.headerRow}>
         <div>
-          <h1 style={styles.h1}>ROSTER</h1>
-          <p style={styles.sub}>
-            {controllers ? `${controllers.length} kontrolerów zarejestrowanych` : 'Ładowanie…'}
+          <h1 style={shared.h1}>ROSTER</h1>
+          <p style={shared.sub}>
+            {controllers ? `${activeCount} kontrolerów zarejestrowanych` : 'Ładowanie…'}
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <button onClick={handleSync} disabled={syncing} style={styles.syncBtn}>
+          <button onClick={handleSync} disabled={syncing} style={shared.btnPrimary}>
             {syncing ? 'Synchronizuję…' : '⟳ Sync now (PL-VACC API)'}
           </button>
           {syncMsg && <div style={styles.syncMsg}>{syncMsg}</div>}
@@ -74,41 +109,149 @@ export default function Roster() {
         placeholder="Szukaj po nazwisku, CID lub ratingu…"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={styles.search}
+        style={{ ...shared.input, width: '100%', maxWidth: 480, marginBottom: 24, display: 'block' }}
       />
 
-      {error && <p style={{ color: '#f87171' }}>{error}</p>}
+      {error && <p style={{ color: colors.red }}>{error}</p>}
 
       <div style={styles.tableWrap}>
         <table style={styles.table}>
           <thead>
             <tr>
-              <th style={styles.th}>NAME</th>
-              <th style={styles.th}>VATSIM CID</th>
-              <th style={styles.th}>RATING</th>
+              <th style={styles.th} onClick={() => toggleSort('name')}>
+                NAME{sortArrow('name')}
+              </th>
+              <th style={styles.th} onClick={() => toggleSort('cid')}>
+                VATSIM CID{sortArrow('cid')}
+              </th>
+              <th style={styles.th} onClick={() => toggleSort('rating')}>
+                RATING{sortArrow('rating')}
+              </th>
               <th style={styles.th}>STATUS</th>
+              <th style={styles.th}></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
-              <tr key={c.id} style={styles.tr}>
+            {filteredSorted.map((c) => (
+              <tr key={c.id} style={{ ...styles.tr, opacity: c.status === 'inactive' ? 0.5 : 1 }}>
                 <td style={styles.td}>
                   {c.name}
-                  {c.is_mentor && <span style={styles.mentorBadge}>MENTOR</span>}
+                  {c.is_mentor && <span style={shared.badge(colors.blue, colors.blueBg)}> MENTOR</span>}
                 </td>
                 <td style={styles.td}>{c.cid || '—'}</td>
                 <td style={styles.td}>
-                  {c.rating && <span style={styles.ratingBadge}>{c.rating}</span>}
+                  {c.rating && <span style={shared.badge(colors.blue, colors.blueBg)}>{c.rating}</span>}{' '}
+                  {endorsementBadges(c).map((b) => (
+                    <span key={b.label} style={{ ...shared.badge(b.color, b.bg), marginLeft: 4 }}>
+                      {b.label}
+                    </span>
+                  ))}
                 </td>
                 <td style={styles.td}>
-                  <span style={styles.statusDot} /> {c.status}
+                  <span style={{ ...styles.statusDot, background: statusColor(c.status) }} /> {c.status}
+                </td>
+                <td style={styles.td}>
+                  <button style={shared.btnGhost} onClick={() => setEditing(c)}>
+                    EDYTUJ
+                  </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      {editing && (
+        <EditControllerModal
+          controller={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            loadControllers();
+          }}
+        />
+      )}
     </Layout>
+  );
+}
+
+function statusColor(status) {
+  if (status === 'inactive') return colors.mutedDim;
+  if (status === 'visitor') return colors.blue;
+  return colors.green;
+}
+
+function EditControllerModal({ controller, onClose, onSaved }) {
+  const [status, setStatus] = useState(controller.status || 'active');
+  const [isMentor, setIsMentor] = useState(!!controller.is_mentor);
+  const [endorsements, setEndorsements] = useState(controller.endorsements || []);
+  const [saving, setSaving] = useState(false);
+
+  const toggleEndorsement = (tag) =>
+    setEndorsements((list) => (list.includes(tag) ? list.filter((t) => t !== tag) : [...list, tag]));
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/controllers/${controller.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status, is_mentor: isMentor, endorsements }),
+      });
+      if (!res.ok) throw new Error('Błąd zapisu');
+      onSaved();
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={shared.modalOverlay} onClick={onClose}>
+      <form style={shared.modal} onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+        <h2 style={shared.h1}>{controller.name}</h2>
+        <p style={shared.sub}>
+          CID {controller.cid || '—'} · {controller.rating || '—'}
+        </p>
+
+        <div style={{ marginBottom: 16 }}>
+          <div style={styles.fieldLabel}>STATUS</div>
+          <select style={{ ...shared.input, width: '100%' }} value={status} onChange={(e) => setStatus(e.target.value)}>
+            <option value="active">Active</option>
+            <option value="visitor">Visitor</option>
+            <option value="inactive">Inactive</option>
+          </select>
+        </div>
+
+        <label style={styles.toggleRow}>
+          <input type="checkbox" checked={isMentor} onChange={(e) => setIsMentor(e.target.checked)} />
+          <span>Mentor</span>
+        </label>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={styles.fieldLabel}>ENDORSEMENTS</div>
+          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+            {ENDORSEMENT_OPTIONS.map((tag) => (
+              <label key={tag} style={styles.toggleRow}>
+                <input type="checkbox" checked={endorsements.includes(tag)} onChange={() => toggleEndorsement(tag)} />
+                <span>{tag}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
+          <button type="button" style={shared.btnGhost} onClick={onClose}>
+            ANULUJ
+          </button>
+          <button type="submit" style={shared.btnPrimary} disabled={saving}>
+            {saving ? 'ZAPISUJĘ…' : 'ZAPISZ'}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 
@@ -121,69 +264,24 @@ const styles = {
     gap: 12,
     marginBottom: 20,
   },
-  h1: { fontSize: '1.8rem', margin: '0 0 4px', letterSpacing: '0.02em' },
-  sub: { color: '#94a3b8', margin: 0 },
-  syncBtn: {
-    padding: '10px 16px',
-    borderRadius: 8,
-    border: '1px solid #f5a623',
-    background: 'rgba(245, 166, 35, 0.12)',
-    color: '#f5a623',
-    fontWeight: 700,
-    fontSize: '0.8rem',
-    cursor: 'pointer',
-  },
-  syncMsg: { marginTop: 6, fontSize: '0.75rem', color: '#94a3b8', maxWidth: 260 },
-  search: {
-    width: '100%',
-    maxWidth: 480,
-    padding: '10px 14px',
-    borderRadius: 8,
-    border: '1px solid #1b2436',
-    background: '#121b2e',
-    color: '#e8edf7',
-    fontSize: '0.9rem',
-    marginBottom: 24,
-    outline: 'none',
-  },
-  tableWrap: { overflowX: 'auto', borderRadius: 10, border: '1px solid #1b2436' },
+  syncMsg: { marginTop: 6, fontSize: '0.75rem', color: colors.muted, maxWidth: 260 },
+  tableWrap: { overflowX: 'auto', borderRadius: 10, border: `1px solid ${colors.border}` },
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' },
   th: {
     textAlign: 'left',
     padding: '12px 16px',
-    color: '#94a3b8',
+    color: colors.muted,
     fontWeight: 600,
     fontSize: '0.75rem',
     letterSpacing: '0.05em',
-    borderBottom: '1px solid #1b2436',
-    background: '#0e1626',
+    borderBottom: `1px solid ${colors.border}`,
+    background: colors.cardAlt,
+    cursor: 'pointer',
+    userSelect: 'none',
   },
-  tr: { borderBottom: '1px solid #151d2e' },
+  tr: { borderBottom: `1px solid ${colors.borderLight}` },
   td: { padding: '12px 16px' },
-  ratingBadge: {
-    display: 'inline-block',
-    padding: '2px 8px',
-    borderRadius: 6,
-    background: 'rgba(59, 130, 246, 0.15)',
-    color: '#60a5fa',
-    fontSize: '0.75rem',
-    fontWeight: 700,
-  },
-  mentorBadge: {
-    marginLeft: 8,
-    padding: '2px 8px',
-    borderRadius: 6,
-    background: 'rgba(245, 166, 35, 0.15)',
-    color: '#f5a623',
-    fontSize: '0.65rem',
-    fontWeight: 700,
-  },
-  statusDot: {
-    display: 'inline-block',
-    width: 7,
-    height: 7,
-    borderRadius: '50%',
-    background: '#34d399',
-    marginRight: 6,
-  },
+  statusDot: { display: 'inline-block', width: 7, height: 7, borderRadius: '50%', marginRight: 6 },
+  fieldLabel: { fontSize: '0.7rem', color: colors.muted, marginBottom: 6, letterSpacing: '0.03em', fontWeight: 700 },
+  toggleRow: { display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.85rem', cursor: 'pointer' },
 };
