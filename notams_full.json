@@ -1,0 +1,125 @@
+﻿{
+    "value":  [
+                  {
+                      "id":  179,
+                      "scope":  "EPKK",
+                      "title":  "V0001/24",
+                      "content":  "TWY G AND TWY W IN USE. NOTIFY VATSIM ATC ON OLD SCENERY WITHOUT TWY W.",
+                      "user_added":  1131338,
+                      "effective_from":  "2024-10-24 13:06:00",
+                      "effective_to":  "1970-01-01 00:00:00",
+                      "est":  0,
+                      "updated_at":  "2024-10-24T13:06:06.000000Z",
+                      "created_at":  "2024-10-24T13:06:06.000000Z"
+                  },
+                  {
+                      "id":  190,
+                      "scope":  "EPWA",
+                      "title":  "V0004/25",
+                      "content":  "REF SUP131/25: APN10 WITHDRAWN FROM OPERATIONAL USE",
+                      "user_added":  1608875,
+                      "effective_from":  "2025-10-30 23:59:00",
+                      "effective_to":  "2027-01-31 23:59:00",
+                      "est":  1,
+                      "updated_at":  "2025-11-30T20:22:20.000000Z",
+                      "created_at":  "2025-11-30T20:22:20.000000Z"
+                  },
+                  {
+                      "id":  230,
+                      "scope":  "EPBY",
+                      "title":  "V0001/26",
+                      "content":  "REF SUP26/26: TWY C CLSD",
+                      "user_added":  1608875,
+                      "effective_from":  "2026-03-19 21:00:00",
+                      "effective_to":  "2027-01-20 23:59:00",
+                      "est":  0,
+                      "updated_at":  "2026-03-19T22:21:30.000000Z",
+                      "created_at":  "2026-03-19T22:21:30.000000Z"
+                  },
+                  {
+                      "id":  239,
+                      "scope":  "EPWA",
+                      "title":  "V0004/26",
+                      "content":  "REF SUP85/26: ENTERING RWY 29 VIA TWY R FOR ACFT WITH WINGSPAN 36 M AND GREATER PROHIBITED",
+                      "user_added":  1608875,
+                      "effective_from":  "2026-06-11 00:00:00",
+                      "effective_to":  "2028-06-30 23:59:00",
+                      "est":  0,
+                      "updated_at":  "2026-06-12T19:49:12.000000Z",
+                      "created_at":  "2026-06-12T19:49:12.000000Z"
+                  },
+                  {
+                      "id":  241,
+                      "scope":  "EPKK",
+                      "title":  "V0005/26",
+                      "content":  "REF SUP28/26: CONSTRUCTION WORKS. STND 7 WITHDRAWN. STAND 7R CHANGES ITS DESIGNATOR TO 7. STND 7 AND 8 CHANGE OF LOCATION AND LIMITED TO CODE C ACFT",
+                      "user_added":  1608875,
+                      "effective_from":  "2026-03-19 00:00:00",
+                      "effective_to":  "2026-08-31 23:59:00",
+                      "est":  1,
+                      "updated_at":  "2026-06-22T23:11:35.000000Z",
+                      "created_at":  "2026-06-22T23:11:35.000000Z"
+                  },
+                  {
+                      "id":  242,
+                      "scope":  "EPWA",
+                      "title":  "A1604/26",
+                      "content":  "TWY E4, TWY E3, TWY N3 AND SEGMENT OF TWY E2 BTN TWY R AND TWY E4 AVBL FOR ACFT WITH WINGSPAN BELOW 36M",
+                      "user_added":  1608875,
+                      "effective_from":  "2026-06-12 11:38:00",
+                      "effective_to":  "2026-09-11 23:59:00",
+                      "est":  1,
+                      "updated_at":  "2026-06-22T23:51:08.000000Z",
+                      "created_at":  "2026-06-22T23:51:08.000000Z"
+                  },
+                  {
+                      "id":  243,
+                      "scope":  "EPWR",
+                      "title":  "H1542/26",
+                      "content":  "TWY G1 CLSD",
+                      "user_added":  1608875,
+                      "effective_from":  "2026-06-12 14:35:00",
+                      "effective_to":  "2026-09-11 14:34:00",
+                      "est":  0,
+                      "updated_at":  "2026-06-25T15:57:38.000000Z",
+                      "created_at":  "2026-06-25T15:57:38.000000Z"
+                  },
+                  {
+                      "id":  244,
+                      "scope":  "EPWR",
+                      "title":  "H1543/26",
+                      "content":  "ACFT CODE E,F TAXIING ON TWY C2-C4 WITH FOLLOW ME ASSISTANCE \r\nONLY. TWY C2-C4 WINGSPAN MAX 52M",
+                      "user_added":  1608875,
+                      "effective_from":  "2026-06-12 15:30:00",
+                      "effective_to":  "2026-08-21 21:59:00",
+                      "est":  0,
+                      "updated_at":  "2026-06-25T15:58:04.000000Z",
+                      "created_at":  "2026-06-25T15:58:04.000000Z"
+                  },
+                  {
+                      "id":  245,
+                      "scope":  "EPKK",
+                      "title":  "A2174/26",
+                      "content":  "ILS AND DME KRW RWY 25 U/S.",
+                      "user_added":  1608875,
+                      "effective_from":  "2026-08-03 11:28:00",
+                      "effective_to":  "2026-09-30 23:59:00",
+                      "est":  1,
+                      "updated_at":  "2026-08-06T21:33:51.000000Z",
+                      "created_at":  "2026-08-06T21:33:51.000000Z"
+                  },
+                  {
+                      "id":  246,
+                      "scope":  "EPWR",
+                      "title":  "V0006/26",
+                      "content":  "TWY C AND TWY J IN USE. NOTIFY VATSIM ATC ON OLD SCENERY WITHOUT TWY C.",
+                      "user_added":  1608875,
+                      "effective_from":  "2026-08-06 18:00:00",
+                      "effective_to":  "1970-01-01 00:00:00",
+                      "est":  0,
+                      "updated_at":  "2026-08-06T21:36:34.000000Z",
+                      "created_at":  "2026-08-06T21:36:34.000000Z"
+                  }
+              ],
+    "Count":  10
+}

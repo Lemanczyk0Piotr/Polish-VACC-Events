@@ -6,8 +6,10 @@ export default function Roster() {
   const [controllers, setControllers] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [syncMsg, setSyncMsg] = useState(null);
 
-  useEffect(() => {
+  const loadControllers = () => {
     supabase
       .from('controllers')
       .select('*')
@@ -16,7 +18,27 @@ export default function Roster() {
         if (error) setError(error.message);
         else setControllers(data);
       });
+  };
+
+  useEffect(() => {
+    loadControllers();
   }, []);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    setSyncMsg(null);
+    try {
+      const res = await fetch('/api/sync/roster', { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Błąd synchronizacji');
+      setSyncMsg(`Zsynchronizowano ${data.synced} kontrolerów.`);
+      loadControllers();
+    } catch (err) {
+      setSyncMsg(`Błąd: ${err.message}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!controllers) return [];
@@ -32,10 +54,20 @@ export default function Roster() {
 
   return (
     <Layout>
-      <h1 style={styles.h1}>ROSTER</h1>
-      <p style={styles.sub}>
-        {controllers ? `${controllers.length} kontrolerów zarejestrowanych` : 'Ładowanie…'}
-      </p>
+      <div style={styles.headerRow}>
+        <div>
+          <h1 style={styles.h1}>ROSTER</h1>
+          <p style={styles.sub}>
+            {controllers ? `${controllers.length} kontrolerów zarejestrowanych` : 'Ładowanie…'}
+          </p>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <button onClick={handleSync} disabled={syncing} style={styles.syncBtn}>
+            {syncing ? 'Synchronizuję…' : '⟳ Sync now (PL-VACC API)'}
+          </button>
+          {syncMsg && <div style={styles.syncMsg}>{syncMsg}</div>}
+        </div>
+      </div>
 
       <input
         type="text"
@@ -81,8 +113,27 @@ export default function Roster() {
 }
 
 const styles = {
+  headerRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 20,
+  },
   h1: { fontSize: '1.8rem', margin: '0 0 4px', letterSpacing: '0.02em' },
-  sub: { color: '#94a3b8', margin: '0 0 20px' },
+  sub: { color: '#94a3b8', margin: 0 },
+  syncBtn: {
+    padding: '10px 16px',
+    borderRadius: 8,
+    border: '1px solid #f5a623',
+    background: 'rgba(245, 166, 35, 0.12)',
+    color: '#f5a623',
+    fontWeight: 700,
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+  },
+  syncMsg: { marginTop: 6, fontSize: '0.75rem', color: '#94a3b8', maxWidth: 260 },
   search: {
     width: '100%',
     maxWidth: 480,
