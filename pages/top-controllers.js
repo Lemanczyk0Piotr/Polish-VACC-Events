@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
-import { colors, shared, formatDatePl } from '../lib/theme';
+import { colors, shared, formatDate } from '../lib/theme';
+import { useLang } from '../lib/i18n';
 
 function fmtDuration(mins) {
   if (!mins) return '0h 00m';
@@ -11,6 +12,7 @@ function fmtDuration(mins) {
 }
 
 export default function TopControllers() {
+  const { lang, t } = useLang();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
@@ -79,17 +81,17 @@ export default function TopControllers() {
     <Layout>
       <div style={styles.headerRow}>
         <div>
-          <h1 style={shared.h1}>TOP CONTROLLERS</h1>
-          <p style={shared.sub}>Ranking wg łącznego czasu na pozycji (zakończone wydarzenia)</p>
+          <h1 style={shared.h1}>{t('top.title')}</h1>
+          <p style={shared.sub}>{t('top.subtitle')}</p>
         </div>
         <button style={shared.btnPrimary} onClick={exportCsv} disabled={!ranked.length}>
-          EXPORT CSV
+          {t('top.exportCsv')}
         </button>
       </div>
 
       {error && <p style={{ color: colors.red }}>{error}</p>}
-      {!rows && !error && <p style={shared.sub}>Ładowanie…</p>}
-      {rows && ranked.length === 0 && <p style={{ color: colors.mutedDim }}>Brak danych z zakończonych wydarzeń.</p>}
+      {!rows && !error && <p style={shared.sub}>{t('top.loading')}</p>}
+      {rows && ranked.length === 0 && <p style={{ color: colors.mutedDim }}>{t('top.noData')}</p>}
 
       <div style={styles.list}>
         {ranked.map((c, i) => (
@@ -104,7 +106,7 @@ export default function TopControllers() {
                 {fmtDuration(c.totalMinutes)}
               </span>
               <span style={{ color: colors.mutedDim, marginLeft: 12 }}>
-                {c.entries.length} {c.entries.length === 1 ? 'sesja' : 'sesje'}
+                {t('top.sessions', { n: c.entries.length })}
               </span>
               <span style={{ marginLeft: 10, color: colors.mutedDim }}>{expanded === c.id ? '▲' : '▼'}</span>
             </button>
@@ -114,7 +116,7 @@ export default function TopControllers() {
                 {c.entries.map((e, idx) => (
                   <div key={idx} style={styles.entryRow}>
                     <span style={{ flex: 1 }}>
-                      {e.event} <span style={{ color: colors.mutedDim }}>· {formatDatePl(e.date)}</span>
+                      {e.event} <span style={{ color: colors.mutedDim }}>· {formatDate(e.date, lang)}</span>
                     </span>
                     <span style={{ color: colors.blue, fontFamily: 'monospace', marginRight: 12 }}>{e.callsign}</span>
                     <span style={{ color: colors.muted, fontFamily: 'monospace' }}>{fmtDuration(e.minutes)}</span>

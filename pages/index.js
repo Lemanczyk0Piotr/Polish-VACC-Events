@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
-import { colors, font, eventKindMeta, formatDatePl, formatTimeZ } from '../lib/theme';
+import { colors, font, eventKindMeta, formatDate, formatTimeZ } from '../lib/theme';
+import { useLang } from '../lib/i18n';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -32,6 +33,7 @@ function eventDateTime(ev) {
 }
 
 export default function Home() {
+  const { lang, t } = useLang();
   const [events, setEvents] = useState(null);
   const [controllers, setControllers] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
@@ -92,10 +94,10 @@ export default function Home() {
     return (
       <Layout>
         <div style={styles.empty}>
-          <h1 style={styles.emptyTitle}>PLVACC Event Scheduling Platform</h1>
-          <p style={styles.emptySub}>Stwórz swoje pierwsze wydarzenie, aby zacząć.</p>
+          <h1 style={styles.emptyTitle}>{t('home.platformTitle')}</h1>
+          <p style={styles.emptySub}>{t('home.emptySub')}</p>
           <Link href="/events" style={styles.emptyCta}>
-            + NOWE WYDARZENIE
+            {t('home.emptyCta')}
           </Link>
         </div>
       </Layout>
@@ -119,14 +121,14 @@ export default function Home() {
                 )}
                 <h1 style={styles.title}>{active.title}</h1>
                 <p style={styles.dateLine}>
-                  {formatDatePl(active.event_date)}
+                  {formatDate(active.event_date, lang)}
                   {active.time_start ? ` · ${formatTimeZ(active.time_start)}` : ''}
                   {active.time_end ? `–${formatTimeZ(active.time_end)}` : ''}
                 </p>
 
                 <div style={styles.countdownWrap}>
                   <div style={styles.countdownLabel}>
-                    {countdown?.live ? 'EVENT LIVE / PAST' : 'TIME TO EVENT'}
+                    {countdown?.live ? t('home.eventLive') : t('home.timeToEvent')}
                   </div>
                   {countdown && !countdown.live && (
                     <div style={styles.countdown}>
@@ -142,29 +144,29 @@ export default function Home() {
 
                 {active.kind === 'event' && (
                   <Link href={`/events/${active.id}`} style={styles.scheduleLink}>
-                    Zobacz harmonogram →
+                    {t('home.viewSchedule')}
                   </Link>
                 )}
               </div>
             </div>
           ) : (
             <div style={styles.mainCard}>
-              <p style={styles.emptySub}>Ładowanie…</p>
+              <p style={styles.emptySub}>{t('home.loading')}</p>
             </div>
           )}
 
           <div style={styles.statsRow}>
-            <StatTile label="AKTYWNI KONTROLERZY" value={activeCount} />
-            <StatTile label="ZAREJESTROWANI" value={registeredCount} />
-            <StatTile label="WYDARZENIA" value={totalEvents} />
+            <StatTile label={t('home.statActive')} value={activeCount} />
+            <StatTile label={t('home.statRegistered')} value={registeredCount} />
+            <StatTile label={t('home.statEvents')} value={totalEvents} />
           </div>
         </div>
 
         <aside style={styles.sidebar}>
-          <div style={styles.sidebarHeader}>OSTATNIE I NADCHODZĄCE WYDARZENIA</div>
+          <div style={styles.sidebarHeader}>{t('home.sidebarHeader')}</div>
           <div style={styles.sidebarList}>
             {nearbyEvents.length === 0 && (
-              <p style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>Brak wydarzeń w ciągu ±1 tygodnia.</p>
+              <p style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('home.noNearby')}</p>
             )}
             {nearbyEvents.map((e) => {
               const meta = eventKindMeta[e.kind] || eventKindMeta.event;
@@ -181,7 +183,7 @@ export default function Home() {
                   <div style={{ ...styles.sidebarDot, background: meta.color }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={styles.sidebarItemTitle}>{e.title}</div>
-                    <div style={styles.sidebarItemDate}>{formatDatePl(e.event_date)}</div>
+                    <div style={styles.sidebarItemDate}>{formatDate(e.event_date, lang)}</div>
                   </div>
                 </button>
               );

@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
 import { colors, shared, RATING_RANK, endorsementBadges } from '../lib/theme';
+import { useLang } from '../lib/i18n';
 
 const ENDORSEMENT_OPTIONS = ['PE', 'S2-CE', 'S3-CE', 'C1-CE'];
 
 export default function Roster() {
+  const { t } = useLang();
   const [controllers, setControllers] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -33,11 +35,11 @@ export default function Roster() {
     try {
       const res = await fetch('/api/sync/roster', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Błąd synchronizacji');
-      setSyncMsg(`Zsynchronizowano ${data.synced} kontrolerów.`);
+      if (!res.ok) throw new Error(data.error || t('roster.syncError'));
+      setSyncMsg(t('roster.syncSuccess', { n: data.synced }));
       loadControllers();
     } catch (err) {
-      setSyncMsg(`Błąd: ${err.message}`);
+      setSyncMsg(t('roster.syncErrorMsg', { msg: err.message }));
     } finally {
       setSyncing(false);
     }
@@ -91,14 +93,14 @@ export default function Roster() {
     <Layout>
       <div style={styles.headerRow}>
         <div>
-          <h1 style={shared.h1}>ROSTER</h1>
+          <h1 style={shared.h1}>{t('roster.title')}</h1>
           <p style={shared.sub}>
-            {controllers ? `${activeCount} kontrolerów zarejestrowanych` : 'Ładowanie…'}
+            {controllers ? t('roster.count', { n: activeCount }) : t('roster.loading')}
           </p>
         </div>
         <div style={{ textAlign: 'right' }}>
           <button onClick={handleSync} disabled={syncing} style={shared.btnPrimary}>
-            {syncing ? 'Synchronizuję…' : '⟳ Sync now (PL-VACC API)'}
+            {syncing ? t('roster.syncing') : t('roster.syncNow')}
           </button>
           {syncMsg && <div style={styles.syncMsg}>{syncMsg}</div>}
         </div>
@@ -106,7 +108,7 @@ export default function Roster() {
 
       <input
         type="text"
-        placeholder="Szukaj po nazwisku, CID lub ratingu…"
+        placeholder={t('roster.searchPlaceholder')}
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         style={{ ...shared.input, width: '100%', maxWidth: 480, marginBottom: 24, display: 'block' }}
@@ -119,15 +121,15 @@ export default function Roster() {
           <thead>
             <tr>
               <th style={styles.th} onClick={() => toggleSort('name')}>
-                NAME{sortArrow('name')}
+                {t('roster.colName')}{sortArrow('name')}
               </th>
               <th style={styles.th} onClick={() => toggleSort('cid')}>
-                VATSIM CID{sortArrow('cid')}
+                {t('roster.colCid')}{sortArrow('cid')}
               </th>
               <th style={styles.th} onClick={() => toggleSort('rating')}>
-                RATING{sortArrow('rating')}
+                {t('roster.colRating')}{sortArrow('rating')}
               </th>
-              <th style={styles.th}>STATUS</th>
+              <th style={styles.th}>{t('roster.colStatus')}</th>
               <th style={styles.th}></th>
             </tr>
           </thead>
@@ -136,7 +138,7 @@ export default function Roster() {
               <tr key={c.id} style={{ ...styles.tr, opacity: c.status === 'inactive' ? 0.5 : 1 }}>
                 <td style={styles.td}>
                   {c.name}
-                  {c.is_mentor && <span style={shared.badge(colors.blue, colors.blueBg)}> MENTOR</span>}
+                  {c.is_mentor && <span style={shared.badge(colors.blue, colors.blueBg)}>{t('roster.mentorBadge')}</span>}
                 </td>
                 <td style={styles.td}>{c.cid || '—'}</td>
                 <td style={styles.td}>
@@ -152,7 +154,7 @@ export default function Roster() {
                 </td>
                 <td style={styles.td}>
                   <button style={shared.btnGhost} onClick={() => setEditing(c)}>
-                    EDYTUJ
+                    {t('roster.edit')}
                   </button>
                 </td>
               </tr>
@@ -182,6 +184,7 @@ function statusColor(status) {
 }
 
 function EditControllerModal({ controller, onClose, onSaved }) {
+  const { t } = useLang();
   const [status, setStatus] = useState(controller.status || 'active');
   const [isMentor, setIsMentor] = useState(!!controller.is_mentor);
   const [endorsements, setEndorsements] = useState(controller.endorsements || []);
@@ -199,7 +202,7 @@ function EditControllerModal({ controller, onClose, onSaved }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, is_mentor: isMentor, endorsements }),
       });
-      if (!res.ok) throw new Error('Błąd zapisu');
+      if (!res.ok) throw new Error(t('roster.saveError'));
       onSaved();
     } catch (err) {
       alert(err.message);
@@ -217,7 +220,7 @@ function EditControllerModal({ controller, onClose, onSaved }) {
         </p>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={styles.fieldLabel}>STATUS</div>
+          <div style={styles.fieldLabel}>{t('roster.fieldStatus')}</div>
           <select style={{ ...shared.input, width: '100%' }} value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="active">Active</option>
             <option value="visitor">Visitor</option>
@@ -227,11 +230,11 @@ function EditControllerModal({ controller, onClose, onSaved }) {
 
         <label style={styles.toggleRow}>
           <input type="checkbox" checked={isMentor} onChange={(e) => setIsMentor(e.target.checked)} />
-          <span>Mentor</span>
+          <span>{t('roster.mentorLabel')}</span>
         </label>
 
         <div style={{ marginTop: 16 }}>
-          <div style={styles.fieldLabel}>ENDORSEMENTS</div>
+          <div style={styles.fieldLabel}>{t('roster.endorsements')}</div>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
             {ENDORSEMENT_OPTIONS.map((tag) => (
               <label key={tag} style={styles.toggleRow}>
@@ -244,10 +247,10 @@ function EditControllerModal({ controller, onClose, onSaved }) {
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 24 }}>
           <button type="button" style={shared.btnGhost} onClick={onClose}>
-            ANULUJ
+            {t('roster.cancel')}
           </button>
           <button type="submit" style={shared.btnPrimary} disabled={saving}>
-            {saving ? 'ZAPISUJĘ…' : 'ZAPISZ'}
+            {saving ? t('roster.saving') : t('roster.save')}
           </button>
         </div>
       </form>

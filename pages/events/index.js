@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import { supabase } from '../../lib/supabaseClient';
-import { colors, shared, font, eventKindMeta, eventStatusMeta, formatDatePl, formatTimeZ } from '../../lib/theme';
+import { colors, shared, font, eventKindMeta, eventStatusMeta, formatDate, formatTimeZ } from '../../lib/theme';
+import { useLang } from '../../lib/i18n';
 
 const EMPTY_FORM = {
   title: '',
@@ -18,6 +19,7 @@ const EMPTY_FORM = {
 };
 
 export default function Events() {
+  const { lang, t } = useLang();
   const [events, setEvents] = useState(null);
   const [error, setError] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -60,34 +62,34 @@ export default function Events() {
   };
 
   const handleDelete = async (ev) => {
-    if (!confirm(`Usunąć „${ev.title}”? Usunie to też wszystkie przypisania kontrolerów.`)) return;
+    if (!confirm(t('events.confirmDelete', { title: ev.title }))) return;
     const res = await fetch(`/api/events/${ev.id}`, { method: 'DELETE' });
     if (res.ok) load();
-    else alert('Nie udało się usunąć.');
+    else alert(t('events.deleteFailed'));
   };
 
   return (
     <Layout>
       <div style={styles.headerRow}>
         <div>
-          <h1 style={shared.h1}>EVENTS</h1>
-          <p style={shared.sub}>{events ? `${events.length} wpisów` : 'Ładowanie…'}</p>
+          <h1 style={shared.h1}>{t('events.title')}</h1>
+          <p style={shared.sub}>{events ? t('events.count', { n: events.length }) : t('events.loading')}</p>
         </div>
         <div style={styles.createBtns}>
           <button style={styles.createBtn(colors.red)} onClick={() => openCreate('event')}>
-            + EVENT
+            {t('events.newEvent')}
           </button>
           <button style={styles.createBtn(colors.purple)} onClick={() => openCreate('exam')}>
-            + EXAM
+            {t('events.newExam')}
           </button>
           <button style={styles.createBtn(colors.cyan)} onClick={() => openCreate('announcement')}>
-            + ANNOUNCEMENT
+            {t('events.newAnnouncement')}
           </button>
         </div>
       </div>
 
       <button style={styles.toggleBtn} onClick={() => setShowCompleted((v) => !v)}>
-        {showCompleted ? '✓ POKAZUJĘ ZAKOŃCZONE' : 'POKAŻ ZAKOŃCZONE'}
+        {showCompleted ? t('events.showingCompleted') : t('events.showCompleted')}
       </button>
 
       {error && <p style={{ color: colors.red }}>{error}</p>}
@@ -107,7 +109,7 @@ export default function Events() {
                 </div>
                 <div style={styles.cardTitle}>{ev.title}</div>
                 <div style={styles.cardDate}>
-                  {formatDatePl(ev.event_date)}
+                  {formatDate(ev.event_date, lang)}
                   {ev.time_start ? ` · ${formatTimeZ(ev.time_start)}` : ''}
                   {ev.time_end ? `–${formatTimeZ(ev.time_end)}` : ''}
                 </div>
@@ -116,21 +118,21 @@ export default function Events() {
               <div style={styles.cardActions}>
                 {ev.kind === 'event' && (
                   <Link href={`/events/${ev.id}`} style={styles.scheduleBtn}>
-                    ZAPISY
+                    {t('events.signups')}
                   </Link>
                 )}
                 <button style={shared.btnGhost} onClick={() => openEdit(ev)}>
-                  EDYTUJ
+                  {t('events.edit')}
                 </button>
                 <button style={shared.btnDanger} onClick={() => handleDelete(ev)}>
-                  USUŃ
+                  {t('events.delete')}
                 </button>
               </div>
             </div>
           );
         })}
         {sorted.length === 0 && events && (
-          <p style={{ color: colors.mutedDim }}>Brak wpisów do pokazania.</p>
+          <p style={{ color: colors.mutedDim }}>{t('events.noEntries')}</p>
         )}
       </div>
 
@@ -150,6 +152,7 @@ export default function Events() {
 }
 
 function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
+  const { t } = useLang();
   const [form, setForm] = useState(() =>
     initial
       ? {
@@ -175,7 +178,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
   const submit = async (e) => {
     e.preventDefault();
     if (!form.title.trim() || !form.event_date) {
-      setErr('Podaj tytuł i datę.');
+      setErr(t('events.validationTitleDate'));
       return;
     }
     setSaving(true);
@@ -201,7 +204,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Błąd zapisu');
+      if (!res.ok) throw new Error(data.error || t('events.saveError'));
       onSaved();
     } catch (e2) {
       setErr(e2.message);
@@ -216,7 +219,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
     <div style={shared.modalOverlay} onClick={onClose}>
       <form style={shared.modal} onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h2 style={{ ...shared.h1, color: meta.color }}>
-          {initial ? 'EDYTUJ WPIS' : `NOWY: ${meta.label}`}
+          {initial ? t('events.modalEditTitle') : t('events.modalNewTitle', { label: meta.label })}
         </h2>
 
         <div style={styles.kindRow}>
@@ -237,46 +240,46 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
           ))}
         </div>
 
-        <Field label="Tytuł">
+        <Field label={t('events.fieldTitle')}>
           <input style={shared.input} value={form.title} onChange={set('title')} />
         </Field>
 
         <div style={styles.row2}>
-          <Field label="Data">
+          <Field label={t('events.fieldDate')}>
             <input type="date" style={shared.input} value={form.event_date} onChange={set('event_date')} />
           </Field>
-          <Field label="Start (Z)">
+          <Field label={t('events.fieldStart')}>
             <input type="time" style={shared.input} value={form.time_start} onChange={set('time_start')} />
           </Field>
           {needsEnd && (
-            <Field label="Koniec (Z)">
+            <Field label={t('events.fieldEnd')}>
               <input type="time" style={shared.input} value={form.time_end} onChange={set('time_end')} />
             </Field>
           )}
         </div>
 
         <div style={styles.row2}>
-          <Field label="Status">
+          <Field label={t('events.fieldStatus')}>
             <select style={shared.input} value={form.status} onChange={set('status')}>
               <option value="draft">Draft</option>
               <option value="published">Published</option>
               <option value="completed">Completed</option>
             </select>
           </Field>
-          <Field label="Kategoria (opcjonalnie)">
-            <input style={shared.input} value={form.category} onChange={set('category')} placeholder="np. Poland Sunday" />
+          <Field label={t('events.fieldCategory')}>
+            <input style={shared.input} value={form.category} onChange={set('category')} placeholder={t('events.categoryPlaceholder')} />
           </Field>
         </div>
 
-        <Field label="Baner (URL obrazka)">
+        <Field label={t('events.fieldBanner')}>
           <input style={shared.input} value={form.image_url} onChange={set('image_url')} placeholder="https://…" />
         </Field>
 
-        <Field label="Link zewnętrzny (np. Canva)">
+        <Field label={t('events.fieldExternalLink')}>
           <input style={shared.input} value={form.external_link} onChange={set('external_link')} placeholder="https://…" />
         </Field>
 
-        <Field label="Notatki">
+        <Field label={t('events.fieldNotes')}>
           <textarea style={{ ...shared.input, minHeight: 80, resize: 'vertical' }} value={form.notes} onChange={set('notes')} />
         </Field>
 
@@ -284,10 +287,10 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
 
         <div style={styles.modalActions}>
           <button type="button" style={shared.btnGhost} onClick={onClose}>
-            ANULUJ
+            {t('events.cancel')}
           </button>
           <button type="submit" style={shared.btnPrimary} disabled={saving}>
-            {saving ? 'ZAPISUJĘ…' : 'ZAPISZ'}
+            {saving ? t('events.saving') : t('events.save')}
           </button>
         </div>
       </form>

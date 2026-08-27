@@ -3,7 +3,8 @@ import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ScheduleGrid from '../../components/ScheduleGrid';
 import { supabase } from '../../lib/supabaseClient';
-import { colors, shared, font, positionTypeColor, formatDatePl, formatTimeZ } from '../../lib/theme';
+import { colors, shared, font, positionTypeColor, formatDate, formatTimeZ } from '../../lib/theme';
+import { useLang } from '../../lib/i18n';
 
 const TYPE_ORDER = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -35,6 +36,7 @@ function utcHHMM(iso) {
 export default function EventScheduler() {
   const router = useRouter();
   const { id } = router.query;
+  const { lang, t } = useLang();
 
   const [event, setEvent] = useState(null);
   const [positions, setPositions] = useState(null);
@@ -117,7 +119,7 @@ export default function EventScheduler() {
 
   const addAssignment = async (positionId, controllerId, studentId, startHHMM, endHHMM) => {
     if (!event.event_date) {
-      alert('Wydarzenie nie ma ustawionej daty.');
+      alert(t('scheduler.noDateAlert'));
       return;
     }
     let startMin = toMin(startHHMM);
@@ -137,7 +139,7 @@ export default function EventScheduler() {
       return new Date(startIso).getTime() < aE && new Date(endIso).getTime() > aS;
     });
     if (overlap) {
-      alert('Ten przedział czasu nachodzi na już przypisanego kontrolera na tej pozycji.');
+      alert(t('scheduler.overlapAlert'));
       return;
     }
 
@@ -158,21 +160,21 @@ export default function EventScheduler() {
       load();
     } else {
       const data = await res.json().catch(() => ({}));
-      alert(data.error || 'Nie udało się dodać kontrolera.');
+      alert(data.error || t('scheduler.addFailed'));
     }
   };
 
   const removeAssignment = async (assignmentId) => {
     const res = await fetch(`/api/assignments/${assignmentId}`, { method: 'DELETE' });
     if (res.ok) load();
-    else alert('Nie udało się usunąć.');
+    else alert(t('scheduler.removeFailed'));
   };
 
   const clearAll = async () => {
-    if (!confirm('Usunąć WSZYSTKICH kontrolerów z tego harmonogramu?')) return;
+    if (!confirm(t('scheduler.clearConfirm'))) return;
     const res = await fetch(`/api/assignments?event_id=${id}`, { method: 'DELETE' });
     if (res.ok) load();
-    else alert('Nie udało się wyczyścić.');
+    else alert(t('scheduler.clearFailed'));
   };
 
   const saveNotes = async () => {
@@ -194,7 +196,7 @@ export default function EventScheduler() {
   if (!event) {
     return (
       <Layout>
-        <p style={shared.sub}>Ładowanie…</p>
+        <p style={shared.sub}>{t('scheduler.loading')}</p>
       </Layout>
     );
   }
@@ -206,22 +208,22 @@ export default function EventScheduler() {
           {event.image_url ? (
             <img src={event.image_url} alt="" style={styles.banner} />
           ) : (
-            <div style={styles.bannerPlaceholder}>BRAK BANERA</div>
+            <div style={styles.bannerPlaceholder}>{t('scheduler.noBanner')}</div>
           )}
           {event.external_link && (
             <a href={event.external_link} target="_blank" rel="noopener noreferrer" style={styles.canvaBtn}>
-              CANVA ↗
+              {t('scheduler.canva')}
             </a>
           )}
         </div>
         <div>
           <h1 style={{ ...shared.h1, fontSize: '2rem' }}>{event.title}</h1>
           <p style={shared.sub}>
-            {formatDatePl(event.event_date)}
+            {formatDate(event.event_date, lang)}
             {event.time_start ? ` · ${formatTimeZ(event.time_start)}` : ''}
             {event.time_end ? `–${formatTimeZ(event.time_end)}` : ''}
           </p>
-          <div style={styles.fieldLabel}>NOTATKI</div>
+          <div style={styles.fieldLabel}>{t('scheduler.notes')}</div>
           <textarea
             style={{ ...shared.input, minHeight: 90, width: '100%', resize: 'vertical' }}
             value={notesDraft}
@@ -232,25 +234,25 @@ export default function EventScheduler() {
       </div>
 
       <div style={styles.summaryBar}>
-        <div style={styles.fieldLabel}>PRZYPISANI KONTROLERZY</div>
+        <div style={styles.fieldLabel}>{t('scheduler.assignedControllers')}</div>
         <div style={styles.summaryGroups}>
-          {TYPE_ORDER.map((t) => {
-            const list = summaryByType[t] || [];
+          {TYPE_ORDER.map((type) => {
+            const list = summaryByType[type] || [];
             if (list.length === 0) return null;
             return (
-              <div key={t} style={styles.summaryGroup}>
-                <span style={{ color: positionTypeColor[t], fontWeight: 700, fontSize: '0.82rem' }}>{t}</span>
+              <div key={type} style={styles.summaryGroup}>
+                <span style={{ color: positionTypeColor[type], fontWeight: 700, fontSize: '0.82rem' }}>{type}</span>
                 {list.map((a) => (
                   <span key={a.id} style={{ color: colors.text, fontSize: '0.88rem' }}>
                     {a.controllers?.name} ({a.controllers?.rating})
-                    {a.student?.name ? ` / uczeń: ${a.student.name}` : ''}
+                    {a.student?.name ? `${t('scheduler.studentLabel')}${a.student.name}` : ''}
                   </span>
                 ))}
               </div>
             );
           })}
           {assignments && assignments.length === 0 && (
-            <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>Brak przypisań.</span>
+            <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('scheduler.noAssignments')}</span>
           )}
         </div>
       </div>
@@ -260,16 +262,16 @@ export default function EventScheduler() {
           style={{ ...shared.btnGhost, ...(staffedOnly ? styles.toggleActive : {}) }}
           onClick={() => setStaffedOnly((v) => !v)}
         >
-          {staffedOnly ? '✓ TYLKO OBSADZONE' : 'TYLKO OBSADZONE'}
+          {staffedOnly ? t('scheduler.staffedOnlyActive') : t('scheduler.staffedOnly')}
         </button>
         <button
           style={{ ...shared.btnPrimary, ...(showGrid ? {} : {}) }}
           onClick={() => setShowGrid((v) => !v)}
         >
-          {showGrid ? '✕ UKRYJ HARMONOGRAM' : '⊞ GENERUJ HARMONOGRAM'}
+          {showGrid ? t('scheduler.hideGrid') : t('scheduler.showGrid')}
         </button>
         <button style={shared.btnDanger} onClick={clearAll} disabled={!assignments || assignments.length === 0}>
-          WYCZYŚĆ WSZYSTKO
+          {t('scheduler.clearAll')}
         </button>
       </div>
 
@@ -279,12 +281,12 @@ export default function EventScheduler() {
         </div>
       )}
 
-      {TYPE_ORDER.map((t) => {
-        const list = grouped[t] || [];
+      {TYPE_ORDER.map((type) => {
+        const list = grouped[type] || [];
         if (list.length === 0) return null;
         return (
-          <section key={t} style={{ marginBottom: 24 }}>
-            <div style={styles.typeHeader(positionTypeColor[t])}>{t}</div>
+          <section key={type} style={{ marginBottom: 24 }}>
+            <div style={styles.typeHeader(positionTypeColor[type])}>{type}</div>
             <div style={styles.posGrid}>
               {list.map(({ position, assignments: posAssignments }) => {
                 // Chain default start time from the latest existing shift end.
@@ -305,14 +307,14 @@ export default function EventScheduler() {
                       <span style={{ fontWeight: 700 }}>{position.callsign}</span>
                       {position.frequency && <span style={styles.freq}>{position.frequency}</span>}
                     </div>
-                    {posAssignments.length === 0 && <div style={styles.gapLine}>- - - BRAK - - -</div>}
+                    {posAssignments.length === 0 && <div style={styles.gapLine}>{t('scheduler.empty')}</div>}
                     {posAssignments.map((a) => (
                       <div key={a.id} style={styles.assignedRow}>
                         <div>
                           <span style={{ color: colors.text, fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
                           <span style={{ color: colors.blue, fontSize: '0.85rem' }}>{a.controllers?.rating}</span>
                           {a.student?.name && (
-                            <span style={{ color: colors.purple, fontSize: '0.85rem' }}> / uczeń: {a.student.name}</span>
+                            <span style={{ color: colors.purple, fontSize: '0.85rem' }}>{t('scheduler.studentLabel')}{a.student.name}</span>
                           )}
                           <div style={{ fontSize: '0.8rem', color: colors.mutedDim }}>
                             {a.time_start && a.time_end
@@ -340,7 +342,7 @@ export default function EventScheduler() {
                       />
                     ) : (
                       <button style={styles.addBtn} onClick={() => setAddingFor(position.id)}>
-                        + DODAJ KONTROLERA
+                        {t('scheduler.addController')}
                       </button>
                     )}
                   </div>
@@ -355,6 +357,7 @@ export default function EventScheduler() {
 }
 
 function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, onAdd }) {
+  const { t } = useLang();
   const [controllerId, setControllerId] = useState('');
   const [studentId, setStudentId] = useState('');
   const [start, setStart] = useState(defaultStart);
@@ -373,18 +376,18 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
           setStudentId('');
         }}
       >
-        <option value="">— wybierz kontrolera —</option>
+        <option value="">{t('scheduler.selectController')}</option>
         {controllers.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name} {c.rating ? `(${c.rating})` : ''}
-            {c.is_mentor ? ' · MENTOR' : ''}
+            {c.is_mentor ? t('scheduler.mentorSuffix') : ''}
           </option>
         ))}
       </select>
 
       {isMentor && (
         <select style={{ ...shared.input, width: '100%', marginTop: 8 }} value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-          <option value="">— uczeń (opcjonalnie) —</option>
+          <option value="">{t('scheduler.selectStudent')}</option>
           {controllers
             .filter((c) => c.id !== controllerId)
             .map((c) => (
@@ -408,10 +411,10 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
           disabled={!controllerId}
           onClick={() => onAdd(controllerId, studentId, start, end)}
         >
-          DODAJ
+          {t('scheduler.add')}
         </button>
         <button style={shared.btnGhost} onClick={onCancel}>
-          ANULUJ
+          {t('scheduler.cancel')}
         </button>
       </div>
     </div>

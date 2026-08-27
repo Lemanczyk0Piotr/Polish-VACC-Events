@@ -1,4 +1,5 @@
 import { colors, positionTypeColor, positionTypeBarBg } from '../lib/theme';
+import { useLang } from '../lib/i18n';
 
 const TYPE_ORDER = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -16,10 +17,12 @@ function fmtUtc(date) {
 // are shown — unfilled stretches of a position's track are simply empty
 // space (a controller can start mid-event, matching how shifts are built).
 export default function ScheduleGrid({ event, assignments }) {
+  const { t } = useLang();
+
   if (!event.event_date || !event.time_start || !event.time_end) {
     return (
       <p style={{ color: colors.mutedDim, fontSize: '0.85rem' }}>
-        Ustaw datę oraz godzinę startu i końca wydarzenia, aby wygenerować harmonogram.
+        {t('grid.setDates')}
       </p>
     );
   }
@@ -28,7 +31,7 @@ export default function ScheduleGrid({ event, assignments }) {
   if (withTimes.length === 0) {
     return (
       <p style={{ color: colors.mutedDim, fontSize: '0.85rem' }}>
-        Brak przypisań z ustawionym czasem — dodaj kontrolerów z zakresem godzin, aby zobaczyć harmonogram.
+        {t('grid.noAssignmentsWithTimes')}
       </p>
     );
   }
@@ -132,7 +135,7 @@ export default function ScheduleGrid({ event, assignments }) {
                       >
                         <div style={styles.barName}>
                           {a.controllers?.name} {a.controllers?.rating}
-                          {studentName ? ` / uczeń: ${studentName}` : ''}
+                          {studentName ? `${t('grid.studentLabel')}${studentName}` : ''}
                         </div>
                         <div style={styles.barTime}>
                           {fmtUtc(s)}-{fmtUtc(e)}z

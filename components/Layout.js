@@ -2,13 +2,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { colors, font, brandGradient } from '../lib/theme';
+import { useLang } from '../lib/i18n';
 
 const NAV_ITEMS = [
-  { href: '/', label: 'OPS Briefing' },
-  { href: '/events', label: 'Events' },
-  { href: '/roster', label: 'Roster' },
-  { href: '/positions', label: 'Positions' },
-  { href: '/top-controllers', label: 'Top Controllers' },
+  { href: '/', key: 'nav.opsBriefing' },
+  { href: '/events', key: 'nav.events' },
+  { href: '/roster', key: 'nav.roster' },
+  { href: '/positions', key: 'nav.positions' },
+  { href: '/top-controllers', key: 'nav.topControllers' },
 ];
 
 const EXTERNAL_LINKS = [
@@ -61,6 +62,7 @@ function MoonIcon({ size = 16 }) {
 
 export default function Layout({ children }) {
   const router = useRouter();
+  const { lang, setLang, t } = useLang();
   const [mobileOpen, setMobileOpen] = useState(false);
   // Default matches the server-rendered markup (light); the real stored
   // preference is picked up client-side right after mount to avoid a
@@ -101,10 +103,18 @@ export default function Layout({ children }) {
         </Link>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
+            style={styles.langToggle}
+            onClick={() => setLang(lang === 'pl' ? 'en' : 'pl')}
+            aria-label={t('lang.switchTo')}
+            title={t('lang.switchTo')}
+          >
+            {lang === 'pl' ? 'EN' : 'PL'}
+          </button>
+          <button
             style={styles.themeToggle}
             onClick={toggleTheme}
-            aria-label={isDark ? 'Przełącz na jasny motyw' : 'Przełącz na ciemny motyw'}
-            title={isDark ? 'Jasny motyw' : 'Ciemny motyw'}
+            aria-label={isDark ? t('theme.toLight') : t('theme.toDark')}
+            title={isDark ? t('theme.light') : t('theme.dark')}
           >
             {isDark ? <SunIcon /> : <MoonIcon />}
           </button>
@@ -121,7 +131,7 @@ export default function Layout({ children }) {
 
       <div style={styles.body}>
         <aside className={`app-sidebar${mobileOpen ? ' open' : ''}`} style={styles.sidebar}>
-          <div style={styles.sidebarSectionLabel}>Nawigacja</div>
+          <div style={styles.sidebarSectionLabel}>{t('nav.sectionLabel')}</div>
           <nav style={styles.navCol}>
             {NAV_ITEMS.map((item) => {
               const active = isActive(item.href);
@@ -132,13 +142,13 @@ export default function Layout({ children }) {
                   onClick={() => setMobileOpen(false)}
                   style={{ ...styles.navLink, ...(active ? styles.navLinkActive : {}) }}
                 >
-                  {item.label}
+                  {t(item.key)}
                 </Link>
               );
             })}
           </nav>
 
-          <div style={{ ...styles.sidebarSectionLabel, marginTop: 26 }}>Linki zewnętrzne</div>
+          <div style={{ ...styles.sidebarSectionLabel, marginTop: 26 }}>{t('nav.externalLinks')}</div>
           <nav style={styles.navCol}>
             {EXTERNAL_LINKS.map((l) => (
               <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" style={styles.extLink}>
@@ -157,7 +167,7 @@ export default function Layout({ children }) {
         <a href="https://plvacc.pl" target="_blank" rel="noopener noreferrer" style={styles.footerLink}>
           plvacc.pl
         </a>
-        <span style={{ color: colors.mutedDim }}>· Polish VACC Events Platform</span>
+        <span style={{ color: colors.mutedDim }}>{t('footer.tagline')}</span>
       </footer>
 
       <style jsx global>{`
@@ -231,6 +241,17 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
+    cursor: 'pointer',
+  },
+  langToggle: {
+    background: 'rgba(255,255,255,0.14)',
+    border: '1px solid rgba(255,255,255,0.3)',
+    borderRadius: 8,
+    padding: '7px 10px',
+    color: '#fff',
+    fontSize: '0.78rem',
+    fontWeight: 800,
+    letterSpacing: '0.03em',
     cursor: 'pointer',
   },
   body: { flex: 1, display: 'flex', alignItems: 'stretch' },

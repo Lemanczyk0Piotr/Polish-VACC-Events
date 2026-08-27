@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
 import { colors, shared } from '../lib/theme';
+import { useLang } from '../lib/i18n';
 
 const TYPES = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
 export default function Positions() {
+  const { t } = useLang();
   const [positions, setPositions] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -47,15 +49,15 @@ export default function Positions() {
 
   return (
     <Layout>
-      <h1 style={styles.h1}>POSITIONS</h1>
+      <h1 style={styles.h1}>{t('positions.title')}</h1>
       <p style={styles.sub}>
-        {positions ? `${positions.length} pozycji ATC` : 'Ładowanie…'}
+        {positions ? t('positions.count', { n: positions.length }) : t('positions.loading')}
       </p>
 
       <div style={styles.controls}>
         <input
           type="text"
-          placeholder="Szukaj callsign, nazwy lub częstotliwości…"
+          placeholder={t('positions.searchPlaceholder')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           style={styles.search}
@@ -65,7 +67,7 @@ export default function Positions() {
             onClick={() => setTypeFilter('ALL')}
             style={{ ...styles.filterBtn, ...(typeFilter === 'ALL' ? styles.filterBtnActive : {}) }}
           >
-            ALL
+            {t('positions.all')}
           </button>
           {TYPES.map((t) => (
             <button
