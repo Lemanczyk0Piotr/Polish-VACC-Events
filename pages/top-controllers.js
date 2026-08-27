@@ -155,9 +155,9 @@ const styles = {
     color: colors.text,
     cursor: 'pointer',
     padding: 0,
-    fontSize: '0.9rem',
+    fontSize: '1rem',
   },
-  rank: { color: colors.mutedDim, fontFamily: 'monospace', width: 34 },
+  rank: { color: colors.mutedDim, fontFamily: 'monospace', width: 38 },
   entries: {
     marginTop: 10,
     paddingTop: 10,
@@ -166,5 +166,5 @@ const styles = {
     flexDirection: 'column',
     gap: 6,
   },
-  entryRow: { display: 'flex', alignItems: 'center', fontSize: '0.8rem' },
+  entryRow: { display: 'flex', alignItems: 'center', fontSize: '0.9rem' },
 };

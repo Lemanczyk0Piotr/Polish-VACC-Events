@@ -289,8 +289,8 @@ const styles = {
     padding: '16px 10px',
     textAlign: 'center',
   },
-  tileValue: { fontSize: '1.6rem', fontWeight: 700, fontFamily: 'monospace' },
-  tileLabel: { fontSize: '0.65rem', color: colors.muted, letterSpacing: '0.05em', marginTop: 4 },
+  tileValue: { fontSize: '1.7rem', fontWeight: 700, fontFamily: 'monospace' },
+  tileLabel: { fontSize: '0.76rem', color: colors.muted, letterSpacing: '0.04em', marginTop: 4 },
   sidebar: {
     border: `1px solid ${colors.border}`,
     borderRadius: 14,
@@ -300,8 +300,8 @@ const styles = {
     overflowY: 'auto',
   },
   sidebarHeader: {
-    fontSize: '0.7rem',
-    letterSpacing: '0.05em',
+    fontSize: '0.8rem',
+    letterSpacing: '0.04em',
     color: colors.muted,
     fontWeight: 700,
     marginBottom: 12,
@@ -332,5 +332,5 @@ const styles = {
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  sidebarItemDate: { fontSize: '0.7rem', color: colors.mutedDim, marginTop: 2 },
+  sidebarItemDate: { fontSize: '0.8rem', color: colors.mutedDim, marginTop: 2 },
 };

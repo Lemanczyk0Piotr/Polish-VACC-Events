@@ -107,8 +107,8 @@ export default function ScheduleGrid({ event, assignments }) {
             {positions.map((p) => (
               <div key={p.callsign} style={styles.row}>
                 <div style={styles.labelCol}>
-                  <div style={{ fontWeight: 700, fontSize: '0.82rem' }}>{p.callsign}</div>
-                  {p.frequency && <div style={{ fontSize: '0.7rem', color: colors.mutedDim }}>{p.frequency}</div>}
+                  <div style={{ fontWeight: 700, fontSize: '0.92rem' }}>{p.callsign}</div>
+                  {p.frequency && <div style={{ fontSize: '0.8rem', color: colors.mutedDim }}>{p.frequency}</div>}
                 </div>
                 <div
                   style={{
@@ -161,20 +161,20 @@ export default function ScheduleGrid({ event, assignments }) {
 const styles = {
   wrap: { overflowX: 'hidden' },
   axisRow: { display: 'flex', marginBottom: 10 },
-  labelCol: { width: 130, flexShrink: 0 },
+  labelCol: { width: 150, flexShrink: 0 },
   trackCol: { position: 'relative', flex: 1, minHeight: 22 },
   tick: {
     position: 'absolute',
     top: 0,
     transform: 'translateX(-50%)',
-    fontSize: '0.72rem',
+    fontSize: '0.82rem',
     color: colors.muted,
     fontFamily: 'monospace',
     whiteSpace: 'nowrap',
   },
   typeLabel: {
     fontWeight: 700,
-    fontSize: '0.8rem',
+    fontSize: '0.92rem',
     letterSpacing: '0.05em',
     marginBottom: 8,
     paddingBottom: 6,
@@ -203,11 +203,11 @@ const styles = {
   barName: {
     color: '#fff',
     fontWeight: 700,
-    fontSize: '0.8rem',
+    fontSize: '0.9rem',
     whiteSpace: 'nowrap',
     textOverflow: 'ellipsis',
     overflow: 'hidden',
     maxWidth: '100%',
   },
-  barTime: { color: '#fff', fontSize: '0.68rem', fontFamily: 'monospace', opacity: 0.85 },
+  barTime: { color: '#fff', fontSize: '0.78rem', fontFamily: 'monospace', opacity: 0.85 },
 };

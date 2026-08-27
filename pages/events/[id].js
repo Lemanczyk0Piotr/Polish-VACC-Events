@@ -239,9 +239,9 @@ export default function EventScheduler() {
             if (list.length === 0) return null;
             return (
               <div key={t} style={styles.summaryGroup}>
-                <span style={{ color: positionTypeColor[t], fontWeight: 700, fontSize: '0.72rem' }}>{t}</span>
+                <span style={{ color: positionTypeColor[t], fontWeight: 700, fontSize: '0.82rem' }}>{t}</span>
                 {list.map((a) => (
-                  <span key={a.id} style={{ color: colors.text, fontSize: '0.78rem' }}>
+                  <span key={a.id} style={{ color: colors.text, fontSize: '0.88rem' }}>
                     {a.controllers?.name} ({a.controllers?.rating})
                     {a.student?.name ? ` / uczeń: ${a.student.name}` : ''}
                   </span>
@@ -310,11 +310,11 @@ export default function EventScheduler() {
                       <div key={a.id} style={styles.assignedRow}>
                         <div>
                           <span style={{ color: colors.text, fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
-                          <span style={{ color: colors.blue, fontSize: '0.75rem' }}>{a.controllers?.rating}</span>
+                          <span style={{ color: colors.blue, fontSize: '0.85rem' }}>{a.controllers?.rating}</span>
                           {a.student?.name && (
-                            <span style={{ color: colors.purple, fontSize: '0.75rem' }}> / uczeń: {a.student.name}</span>
+                            <span style={{ color: colors.purple, fontSize: '0.85rem' }}> / uczeń: {a.student.name}</span>
                           )}
-                          <div style={{ fontSize: '0.7rem', color: colors.mutedDim }}>
+                          <div style={{ fontSize: '0.8rem', color: colors.mutedDim }}>
                             {a.time_start && a.time_end
                               ? `${utcHHMM(a.time_start)}-${utcHHMM(a.time_end)}z`
                               : a.session_minutes
@@ -430,21 +430,21 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     color: colors.mutedDim,
-    fontSize: '0.75rem',
+    fontSize: '0.85rem',
   },
   canvaBtn: {
     display: 'inline-block',
     marginTop: 10,
-    padding: '8px 14px',
+    padding: '9px 16px',
     borderRadius: 8,
     border: `1px solid ${colors.purple}`,
     background: colors.purpleBg,
     color: colors.purple,
     fontWeight: 700,
-    fontSize: '0.75rem',
+    fontSize: '0.85rem',
     textDecoration: 'none',
   },
-  fieldLabel: { fontSize: '0.7rem', color: colors.muted, marginBottom: 8, letterSpacing: '0.03em', fontWeight: 700 },
+  fieldLabel: { fontSize: '0.8rem', color: colors.muted, marginBottom: 8, letterSpacing: '0.03em', fontWeight: 700 },
   summaryBar: {
     border: `1px solid ${colors.border}`,
     borderRadius: 12,
@@ -458,17 +458,17 @@ const styles = {
   toggleActive: { borderColor: colors.amber, color: colors.amber },
   typeHeader: (color) => ({
     fontWeight: 700,
-    fontSize: '0.85rem',
+    fontSize: '0.98rem',
     letterSpacing: '0.05em',
     color,
     marginBottom: 10,
     paddingBottom: 6,
     borderBottom: `1px solid ${colors.border}`,
   }),
-  posGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 },
-  posHead: { display: 'flex', justifyContent: 'space-between', marginBottom: 8 },
-  freq: { color: colors.blue, fontSize: '0.8rem', fontFamily: 'monospace' },
-  gapLine: { color: colors.mutedDim, fontSize: '0.75rem', textAlign: 'center', margin: '8px 0' },
+  posGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(270px, 1fr))', gap: 14 },
+  posHead: { display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: '1rem' },
+  freq: { color: colors.blue, fontSize: '0.9rem', fontFamily: 'monospace' },
+  gapLine: { color: colors.mutedDim, fontSize: '0.85rem', textAlign: 'center', margin: '8px 0' },
   assignedRow: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -481,17 +481,17 @@ const styles = {
     border: 'none',
     color: colors.red,
     cursor: 'pointer',
-    fontSize: '0.9rem',
+    fontSize: '1rem',
   },
   addBtn: {
     marginTop: 8,
     width: '100%',
-    padding: '8px 0',
+    padding: '9px 0',
     borderRadius: 6,
     border: `1px dashed ${colors.border}`,
     background: 'transparent',
     color: colors.muted,
-    fontSize: '0.75rem',
+    fontSize: '0.85rem',
     fontWeight: 700,
     cursor: 'pointer',
   },

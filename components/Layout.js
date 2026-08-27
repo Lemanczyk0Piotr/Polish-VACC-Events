@@ -101,6 +101,7 @@ export default function Layout({ children }) {
       </footer>
 
       <style jsx global>{`
+        html { font-size: 18px; }
         body { background: ${colors.bg}; }
         .burger-btn { display: none; }
         @media (max-width: 860px) {
@@ -152,7 +153,7 @@ const styles = {
   },
   brandText: { display: 'flex', flexDirection: 'column', lineHeight: 1.1 },
   brandTitle: { color: '#fff', fontWeight: 800, fontSize: '0.96rem', letterSpacing: '0.01em', fontFamily: font.display },
-  brandSub: { color: 'rgba(255,255,255,0.78)', fontSize: '0.68rem', letterSpacing: '0.12em', fontWeight: 600, textTransform: 'uppercase' },
+  brandSub: { color: 'rgba(255,255,255,0.78)', fontSize: '0.76rem', letterSpacing: '0.1em', fontWeight: 600, textTransform: 'uppercase' },
   burger: {
     background: 'rgba(255,255,255,0.14)',
     border: '1px solid rgba(255,255,255,0.3)',
@@ -173,7 +174,7 @@ const styles = {
   },
   sidebarSectionLabel: {
     color: colors.amber,
-    fontSize: '0.66rem',
+    fontSize: '0.75rem',
     fontWeight: 800,
     letterSpacing: '0.1em',
     textTransform: 'uppercase',
@@ -181,11 +182,11 @@ const styles = {
   },
   navCol: { display: 'flex', flexDirection: 'column', gap: 2 },
   navLink: {
-    padding: '9px 12px',
+    padding: '10px 12px',
     borderRadius: 7,
     color: colors.muted,
     textDecoration: 'none',
-    fontSize: '0.84rem',
+    fontSize: '0.94rem',
     fontWeight: 600,
     borderLeft: '3px solid transparent',
   },
@@ -200,7 +201,7 @@ const styles = {
     borderRadius: 7,
     color: colors.blue,
     textDecoration: 'none',
-    fontSize: '0.76rem',
+    fontSize: '0.85rem',
     fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
@@ -214,7 +215,7 @@ const styles = {
     background: 'rgba(20, 12, 14, 0.35)',
     zIndex: 90,
   },
-  main: { flex: 1, minWidth: 0, padding: '28px 32px', maxWidth: 1180, margin: '0 auto', width: '100%' },
+  main: { flex: 1, minWidth: 0, padding: '28px 32px', maxWidth: 1560, margin: '0 auto', width: '100%' },
   footer: {
     borderTop: `1px solid ${colors.border}`,
     background: colors.card,
