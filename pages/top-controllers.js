@@ -18,7 +18,7 @@ export default function TopControllers() {
   useEffect(() => {
     supabase
       .from('event_assignments')
-      .select('id, session_minutes, controllers(id, name, rating), positions(callsign, type), events!inner(title, event_date, status)')
+      .select('id, session_minutes, controllers:controllers!event_assignments_controller_id_fkey(id, name, rating), positions(callsign, type), events!inner(title, event_date, status)')
       .eq('events.status', 'completed')
       .then(({ data, error }) => {
         if (error) setError(error.message);
