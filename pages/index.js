@@ -129,40 +129,50 @@ export default function Home() {
                 <img src={active.image_url} alt="" style={styles.banner} />
               )}
               <div style={styles.mainCardBody}>
-                <div style={styles.eyebrow}>{t('home.nextEvent')}</div>
-                {eventKindMeta[active.kind] && (
-                  <span style={styles.kindBadge(eventKindMeta[active.kind])}>
-                    {eventKindMeta[active.kind].label}
-                  </span>
-                )}
-                <h1 style={styles.title}>{active.title}</h1>
-                <p style={styles.dateLine}>
-                  {formatDate(active.event_date, lang)}
-                  {active.time_start ? ` · ${formatTimeZ(active.time_start)}` : ''}
-                  {active.time_end ? `–${formatTimeZ(active.time_end)}` : ''}
-                </p>
-
-                <div style={styles.countdownWrap}>
-                  <div style={styles.countdownLabel}>
-                    {countdown?.live ? t('home.eventLive') : t('home.timeToEvent')}
-                  </div>
-                  {countdown && !countdown.live && (
-                    <div style={styles.countdown}>
-                      {String(countdown.days).padStart(2, '0')}d{' '}
-                      {String(countdown.hours).padStart(2, '0')}:
-                      {String(countdown.minutes).padStart(2, '0')}:
-                      {String(countdown.seconds).padStart(2, '0')}
-                    </div>
+                <div style={styles.heroMain}>
+                  <div style={styles.eyebrow}>{t('home.nextEvent')}</div>
+                  {eventKindMeta[active.kind] && (
+                    <span style={styles.kindBadge(eventKindMeta[active.kind])}>
+                      {eventKindMeta[active.kind].label}
+                    </span>
                   )}
+                  <h1 style={styles.title}>{active.title}</h1>
+                  <p style={styles.dateLine}>
+                    {formatDate(active.event_date, lang)}
+                    {active.time_start ? ` · ${formatTimeZ(active.time_start)}` : ''}
+                    {active.time_end ? `–${formatTimeZ(active.time_end)}` : ''}
+                  </p>
+
+                  {active.notes && <p style={styles.notes}>{active.notes}</p>}
+
+                  <div style={styles.heroActions}>
+                    {active.kind === 'event' && (
+                      <Link href={`/events/${active.id}`} style={styles.scheduleLink}>
+                        {t('home.viewSchedule')}
+                      </Link>
+                    )}
+                    {active.external_link && (
+                      <a href={active.external_link} target="_blank" rel="noopener noreferrer" style={styles.heroLinkBtn}>
+                        {t('home.externalLink')}
+                      </a>
+                    )}
+                  </div>
                 </div>
 
-                {active.notes && <p style={styles.notes}>{active.notes}</p>}
-
-                {active.kind === 'event' && (
-                  <Link href={`/events/${active.id}`} style={styles.scheduleLink}>
-                    {t('home.viewSchedule')}
-                  </Link>
-                )}
+                <div style={styles.heroSide}>
+                  {active.category && <div style={styles.categoryChip}>{active.category}</div>}
+                  <div style={styles.countdownWrap}>
+                    <div style={styles.countdownLabel}>
+                      {countdown?.live ? t('home.eventLive') : t('home.timeToEvent')}
+                    </div>
+                    {countdown && !countdown.live && (
+                      <div style={styles.countdown}>
+                        {String(countdown.days).padStart(2, '0')}d {String(countdown.hours).padStart(2, '0')}:
+                        {String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -261,7 +271,52 @@ const styles = {
     overflow: 'hidden',
     boxShadow: '0 1px 3px rgba(16, 24, 40, 0.05)',
   },
-  mainCardBody: { padding: '28px' },
+  mainCardBody: {
+    padding: '28px',
+    display: 'flex',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 28,
+  },
+  heroMain: { flex: '1 1 360px', minWidth: 0, maxWidth: 640 },
+  heroSide: {
+    flex: '0 0 260px',
+    width: 260,
+    alignSelf: 'stretch',
+    border: `1px solid ${colors.border}`,
+    borderRadius: 12,
+    background: colors.cardAlt,
+    padding: '22px 20px',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    textAlign: 'center',
+    gap: 4,
+  },
+  categoryChip: {
+    fontSize: '0.72rem',
+    fontWeight: 700,
+    letterSpacing: '0.05em',
+    color: colors.muted,
+    background: colors.card,
+    border: `1px solid ${colors.border}`,
+    borderRadius: 20,
+    padding: '4px 12px',
+    marginBottom: 14,
+  },
+  heroActions: { display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginTop: 4 },
+  heroLinkBtn: {
+    display: 'inline-block',
+    padding: '9px 16px',
+    borderRadius: 8,
+    border: `1px solid ${colors.blue}`,
+    background: colors.blueBg,
+    color: colors.blue,
+    fontWeight: 700,
+    fontSize: '0.82rem',
+    textDecoration: 'none',
+  },
   kindBadge: (meta) => ({
     display: 'inline-block',
     marginBottom: 12,
@@ -289,19 +344,19 @@ const styles = {
   },
   title: { fontSize: '1.9rem', margin: '0 0 8px', fontFamily: font.display, fontWeight: 700, letterSpacing: '-0.01em' },
   dateLine: { color: colors.muted, margin: '0 0 20px', fontFamily: 'monospace' },
-  countdownWrap: { margin: '20px 0' },
+  countdownWrap: {},
   countdownLabel: {
     fontSize: '0.75rem',
     letterSpacing: '0.1em',
     color: colors.amber,
     fontWeight: 700,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   countdown: {
-    fontSize: '2.4rem',
+    fontSize: '2.3rem',
     fontFamily: 'monospace',
-    fontWeight: 700,
-    letterSpacing: '0.02em',
+    fontWeight: 800,
+    letterSpacing: '0.01em',
   },
   notes: {
     color: colors.muted,
