@@ -31,3 +31,6 @@ venv/
 
 # Logs
 *.log
+
+# Delivery bundles (used only to ship commits out of the sandbox)
+*.bundle
