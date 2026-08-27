@@ -69,8 +69,11 @@ export default function Home() {
     const now = today.getTime();
     return events
       .filter((e) => {
+        if (e.status === 'completed') return false;
         const d = new Date(eventDateTime(e)).getTime();
-        return Math.abs(d - now) <= WEEK_MS;
+        // Forward-looking window only now — past/completed events shouldn't
+        // linger in "recent and upcoming" once they're done.
+        return d >= now && d - now <= WEEK_MS;
       })
       .sort((a, b) => new Date(eventDateTime(a)) - new Date(eventDateTime(b)));
   }, [events, today]);
@@ -248,7 +251,7 @@ const styles = {
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr) 300px',
     gap: 24,
-    alignItems: 'start',
+    alignItems: 'stretch',
   },
   mainCard: {
     border: `1px solid ${colors.border}`,
@@ -273,8 +276,7 @@ const styles = {
   banner: {
     width: '100%',
     aspectRatio: '16 / 9',
-    maxHeight: 340,
-    objectFit: 'cover',
+    objectFit: 'contain',
     display: 'block',
     background: colors.cardAlt,
   },
@@ -327,13 +329,14 @@ const styles = {
   },
   tileValue: { fontSize: '1.7rem', fontWeight: 700, fontFamily: 'monospace' },
   tileLabel: { fontSize: '0.76rem', color: colors.muted, letterSpacing: '0.04em', marginTop: 4 },
-  sidebarCol: { display: 'flex', flexDirection: 'column', gap: 16 },
+  sidebarCol: { display: 'flex', flexDirection: 'column', gap: 16, height: '100%' },
   clockCard: {
     border: `1px solid ${colors.border}`,
     borderRadius: 14,
     background: brandGradient,
     padding: '18px 16px',
     textAlign: 'center',
+    flexShrink: 0,
   },
   clockLabel: {
     fontSize: '0.72rem',
@@ -361,7 +364,8 @@ const styles = {
     borderRadius: 14,
     background: colors.card,
     padding: 16,
-    maxHeight: 480,
+    flex: 1,
+    minHeight: 0,
     overflowY: 'auto',
   },
   sidebarHeader: {
