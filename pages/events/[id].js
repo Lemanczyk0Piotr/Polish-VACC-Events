@@ -420,10 +420,10 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
 
 const styles = {
   topGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 440px) 1fr', gap: 28, marginBottom: 28 },
-  banner: { width: '100%', height: 280, objectFit: 'cover', borderRadius: 12, background: colors.cardAlt, boxShadow: '0 1px 3px rgba(16, 24, 40, 0.06)' },
+  banner: { width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 12, background: colors.cardAlt, boxShadow: '0 1px 3px rgba(16, 24, 40, 0.06)' },
   bannerPlaceholder: {
     width: '100%',
-    height: 220,
+    aspectRatio: '16 / 9',
     borderRadius: 12,
     border: `1px dashed ${colors.border}`,
     display: 'flex',

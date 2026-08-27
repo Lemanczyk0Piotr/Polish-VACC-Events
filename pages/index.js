@@ -245,7 +245,7 @@ const styles = {
   }),
   banner: {
     width: '100%',
-    height: 'clamp(200px, 32vw, 360px)',
+    aspectRatio: '16 / 9',
     objectFit: 'cover',
     display: 'block',
     background: colors.cardAlt,
