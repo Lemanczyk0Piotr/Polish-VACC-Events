@@ -36,7 +36,7 @@ export default function Roster() {
       const res = await fetch('/api/sync/roster', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t('roster.syncError'));
-      setSyncMsg(t('roster.syncSuccess', { n: data.synced }));
+      setSyncMsg(t('roster.syncSuccess', { n: data.synced, deactivated: data.deactivated || 0 }));
       loadControllers();
     } catch (err) {
       setSyncMsg(t('roster.syncErrorMsg', { msg: err.message }));
