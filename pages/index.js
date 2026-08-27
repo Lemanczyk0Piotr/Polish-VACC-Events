@@ -226,7 +226,6 @@ const styles = {
     border: `1px solid ${colors.border}`,
     borderRadius: 14,
     background: colors.card,
-    textAlign: 'center',
     position: 'relative',
     overflow: 'hidden',
     boxShadow: '0 1px 3px rgba(16, 24, 40, 0.05)',
@@ -268,9 +267,10 @@ const styles = {
   },
   notes: {
     color: colors.muted,
-    fontSize: '0.9rem',
-    maxWidth: 480,
-    margin: '0 auto 12px',
+    fontSize: '0.95rem',
+    lineHeight: 1.6,
+    maxWidth: 640,
+    margin: '0 0 12px',
     whiteSpace: 'pre-wrap',
   },
   scheduleLink: {
