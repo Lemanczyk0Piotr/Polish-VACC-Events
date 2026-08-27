@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
-import { colors, font, eventKindMeta, formatDate, formatTimeZ } from '../lib/theme';
+import { colors, font, brandGradient, eventKindMeta, formatDate, formatTimeZ } from '../lib/theme';
 import { useLang } from '../lib/i18n';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -32,8 +32,20 @@ function eventDateTime(ev) {
   return `${ev.event_date}T${t}Z`;
 }
 
+// Live UTC ("zulu") clock — the time format ATC actually works in, so it earns
+// a prominent spot on the briefing page rather than being buried in a corner.
+function useClock() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return new Date(now);
+}
+
 export default function Home() {
   const { lang, t } = useLang();
+  const clock = useClock();
   const [events, setEvents] = useState(null);
   const [controllers, setControllers] = useState(null);
   const [selectedId, setSelectedId] = useState(null);
@@ -114,6 +126,7 @@ export default function Home() {
                 <img src={active.image_url} alt="" style={styles.banner} />
               )}
               <div style={styles.mainCardBody}>
+                <div style={styles.eyebrow}>{t('home.nextEvent')}</div>
                 {eventKindMeta[active.kind] && (
                   <span style={styles.kindBadge(eventKindMeta[active.kind])}>
                     {eventKindMeta[active.kind].label}
@@ -162,9 +175,21 @@ export default function Home() {
           </div>
         </div>
 
-        <aside style={styles.sidebar}>
-          <div style={styles.sidebarHeader}>{t('home.sidebarHeader')}</div>
-          <div style={styles.sidebarList}>
+        <div style={styles.sidebarCol}>
+          <div style={styles.clockCard}>
+            <div style={styles.clockLabel}>{t('home.zuluLabel')}</div>
+            <div style={styles.clockValue}>
+              {String(clock.getUTCHours()).padStart(2, '0')}:
+              {String(clock.getUTCMinutes()).padStart(2, '0')}:
+              {String(clock.getUTCSeconds()).padStart(2, '0')}
+              <span style={styles.clockZ}>Z</span>
+            </div>
+            <div style={styles.clockDate}>{formatDate(clock.toISOString().slice(0, 10), lang)}</div>
+          </div>
+
+          <aside style={styles.sidebar}>
+            <div style={styles.sidebarHeader}>{t('home.sidebarHeader')}</div>
+            <div style={styles.sidebarList}>
             {nearbyEvents.length === 0 && (
               <p style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('home.noNearby')}</p>
             )}
@@ -188,8 +213,9 @@ export default function Home() {
                 </button>
               );
             })}
-          </div>
-        </aside>
+            </div>
+          </aside>
+        </div>
       </div>
     </Layout>
   );
@@ -247,9 +273,17 @@ const styles = {
   banner: {
     width: '100%',
     aspectRatio: '16 / 9',
+    maxHeight: 340,
     objectFit: 'cover',
     display: 'block',
     background: colors.cardAlt,
+  },
+  eyebrow: {
+    fontSize: '0.72rem',
+    fontWeight: 800,
+    letterSpacing: '0.12em',
+    color: colors.mutedDim,
+    marginBottom: 10,
   },
   title: { fontSize: '1.9rem', margin: '0 0 8px', fontFamily: font.display, fontWeight: 700, letterSpacing: '-0.01em' },
   dateLine: { color: colors.muted, margin: '0 0 20px', fontFamily: 'monospace' },
@@ -293,12 +327,41 @@ const styles = {
   },
   tileValue: { fontSize: '1.7rem', fontWeight: 700, fontFamily: 'monospace' },
   tileLabel: { fontSize: '0.76rem', color: colors.muted, letterSpacing: '0.04em', marginTop: 4 },
+  sidebarCol: { display: 'flex', flexDirection: 'column', gap: 16 },
+  clockCard: {
+    border: `1px solid ${colors.border}`,
+    borderRadius: 14,
+    background: brandGradient,
+    padding: '18px 16px',
+    textAlign: 'center',
+  },
+  clockLabel: {
+    fontSize: '0.72rem',
+    letterSpacing: '0.14em',
+    color: 'rgba(255,255,255,0.8)',
+    fontWeight: 800,
+    marginBottom: 6,
+  },
+  clockValue: {
+    fontSize: '2.5rem',
+    fontFamily: 'monospace',
+    fontWeight: 800,
+    letterSpacing: '0.01em',
+    color: '#fff',
+  },
+  clockZ: { fontSize: '1.3rem', opacity: 0.75, marginLeft: 2 },
+  clockDate: {
+    fontSize: '0.82rem',
+    color: 'rgba(255,255,255,0.78)',
+    marginTop: 4,
+    fontFamily: font.display,
+  },
   sidebar: {
     border: `1px solid ${colors.border}`,
     borderRadius: 14,
     background: colors.card,
     padding: 16,
-    maxHeight: 560,
+    maxHeight: 480,
     overflowY: 'auto',
   },
   sidebarHeader: {
