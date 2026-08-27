@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ScheduleGrid from '../../components/ScheduleGrid';
 import { supabase } from '../../lib/supabaseClient';
-import { colors, shared, positionTypeColor, formatDatePl, formatTimeZ } from '../../lib/theme';
+import { colors, shared, font, positionTypeColor, formatDatePl, formatTimeZ } from '../../lib/theme';
 
 const TYPE_ORDER = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -215,7 +215,7 @@ export default function EventScheduler() {
           )}
         </div>
         <div>
-          <h1 style={shared.h1}>{event.title}</h1>
+          <h1 style={{ ...shared.h1, fontSize: '2rem' }}>{event.title}</h1>
           <p style={shared.sub}>
             {formatDatePl(event.event_date)}
             {event.time_start ? ` · ${formatTimeZ(event.time_start)}` : ''}
@@ -419,12 +419,12 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
 }
 
 const styles = {
-  topGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 380px) 1fr', gap: 24, marginBottom: 24 },
-  banner: { width: '100%', maxHeight: 220, objectFit: 'contain', borderRadius: 10, background: colors.cardAlt },
+  topGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 440px) 1fr', gap: 28, marginBottom: 28 },
+  banner: { width: '100%', height: 280, objectFit: 'cover', borderRadius: 12, background: colors.cardAlt, boxShadow: '0 1px 3px rgba(16, 24, 40, 0.06)' },
   bannerPlaceholder: {
     width: '100%',
-    height: 140,
-    borderRadius: 10,
+    height: 220,
+    borderRadius: 12,
     border: `1px dashed ${colors.border}`,
     display: 'flex',
     alignItems: 'center',

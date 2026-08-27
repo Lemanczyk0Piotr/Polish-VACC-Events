@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
-import { colors, eventKindMeta, formatDatePl, formatTimeZ } from '../lib/theme';
+import { colors, font, eventKindMeta, formatDatePl, formatTimeZ } from '../lib/theme';
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -108,42 +108,44 @@ export default function Home() {
         <div>
           {active ? (
             <div style={styles.mainCard}>
-              {eventKindMeta[active.kind] && (
-                <span style={styles.kindBadge(eventKindMeta[active.kind])}>
-                  {eventKindMeta[active.kind].label}
-                </span>
-              )}
               {active.image_url && (
                 <img src={active.image_url} alt="" style={styles.banner} />
               )}
-              <h1 style={styles.title}>{active.title}</h1>
-              <p style={styles.dateLine}>
-                {formatDatePl(active.event_date)}
-                {active.time_start ? ` · ${formatTimeZ(active.time_start)}` : ''}
-                {active.time_end ? `–${formatTimeZ(active.time_end)}` : ''}
-              </p>
+              <div style={styles.mainCardBody}>
+                {eventKindMeta[active.kind] && (
+                  <span style={styles.kindBadge(eventKindMeta[active.kind])}>
+                    {eventKindMeta[active.kind].label}
+                  </span>
+                )}
+                <h1 style={styles.title}>{active.title}</h1>
+                <p style={styles.dateLine}>
+                  {formatDatePl(active.event_date)}
+                  {active.time_start ? ` · ${formatTimeZ(active.time_start)}` : ''}
+                  {active.time_end ? `–${formatTimeZ(active.time_end)}` : ''}
+                </p>
 
-              <div style={styles.countdownWrap}>
-                <div style={styles.countdownLabel}>
-                  {countdown?.live ? 'EVENT LIVE / PAST' : 'TIME TO EVENT'}
-                </div>
-                {countdown && !countdown.live && (
-                  <div style={styles.countdown}>
-                    {String(countdown.days).padStart(2, '0')}d{' '}
-                    {String(countdown.hours).padStart(2, '0')}:
-                    {String(countdown.minutes).padStart(2, '0')}:
-                    {String(countdown.seconds).padStart(2, '0')}
+                <div style={styles.countdownWrap}>
+                  <div style={styles.countdownLabel}>
+                    {countdown?.live ? 'EVENT LIVE / PAST' : 'TIME TO EVENT'}
                   </div>
+                  {countdown && !countdown.live && (
+                    <div style={styles.countdown}>
+                      {String(countdown.days).padStart(2, '0')}d{' '}
+                      {String(countdown.hours).padStart(2, '0')}:
+                      {String(countdown.minutes).padStart(2, '0')}:
+                      {String(countdown.seconds).padStart(2, '0')}
+                    </div>
+                  )}
+                </div>
+
+                {active.notes && <p style={styles.notes}>{active.notes}</p>}
+
+                {active.kind === 'event' && (
+                  <Link href={`/events/${active.id}`} style={styles.scheduleLink}>
+                    Zobacz harmonogram →
+                  </Link>
                 )}
               </div>
-
-              {active.notes && <p style={styles.notes}>{active.notes}</p>}
-
-              {active.kind === 'event' && (
-                <Link href={`/events/${active.id}`} style={styles.scheduleLink}>
-                  ZOBACZ HARMONOGRAM →
-                </Link>
-              )}
             </div>
           ) : (
             <div style={styles.mainCard}>
@@ -202,7 +204,7 @@ function StatTile({ label, value }) {
 
 const styles = {
   empty: { textAlign: 'center', padding: '80px 20px' },
-  emptyTitle: { fontSize: '1.6rem', margin: '0 0 10px' },
+  emptyTitle: { fontSize: '2rem', margin: '0 0 10px', fontFamily: font.display, fontWeight: 700 },
   emptySub: { color: colors.muted },
   emptyCta: {
     display: 'inline-block',
@@ -224,10 +226,12 @@ const styles = {
     border: `1px solid ${colors.border}`,
     borderRadius: 14,
     background: colors.card,
-    padding: 28,
     textAlign: 'center',
     position: 'relative',
+    overflow: 'hidden',
+    boxShadow: '0 1px 3px rgba(16, 24, 40, 0.05)',
   },
+  mainCardBody: { padding: '28px' },
   kindBadge: (meta) => ({
     display: 'inline-block',
     marginBottom: 12,
@@ -241,13 +245,12 @@ const styles = {
   }),
   banner: {
     width: '100%',
-    maxHeight: 200,
-    objectFit: 'contain',
-    borderRadius: 10,
-    marginBottom: 16,
+    height: 'clamp(200px, 32vw, 360px)',
+    objectFit: 'cover',
+    display: 'block',
     background: colors.cardAlt,
   },
-  title: { fontSize: '1.6rem', margin: '0 0 6px' },
+  title: { fontSize: '1.9rem', margin: '0 0 8px', fontFamily: font.display, fontWeight: 700, letterSpacing: '-0.01em' },
   dateLine: { color: colors.muted, margin: '0 0 20px', fontFamily: 'monospace' },
   countdownWrap: { margin: '20px 0' },
   countdownLabel: {

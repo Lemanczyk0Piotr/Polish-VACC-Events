@@ -151,7 +151,7 @@ const styles = {
     flexShrink: 0,
   },
   brandText: { display: 'flex', flexDirection: 'column', lineHeight: 1.1 },
-  brandTitle: { color: '#fff', fontWeight: 800, fontSize: '0.92rem', letterSpacing: '0.05em', fontFamily: font.sans },
+  brandTitle: { color: '#fff', fontWeight: 800, fontSize: '0.96rem', letterSpacing: '0.01em', fontFamily: font.display },
   brandSub: { color: 'rgba(255,255,255,0.78)', fontSize: '0.68rem', letterSpacing: '0.12em', fontWeight: 600, textTransform: 'uppercase' },
   burger: {
     background: 'rgba(255,255,255,0.14)',

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
 import { supabase } from '../../lib/supabaseClient';
-import { colors, shared, eventKindMeta, eventStatusMeta, formatDatePl, formatTimeZ } from '../../lib/theme';
+import { colors, shared, font, eventKindMeta, eventStatusMeta, formatDatePl, formatTimeZ } from '../../lib/theme';
 
 const EMPTY_FORM = {
   title: '',
@@ -329,21 +329,22 @@ const styles = {
     ...shared.btnGhost,
     marginBottom: 20,
   },
-  list: { display: 'flex', flexDirection: 'column', gap: 12 },
+  list: { display: 'flex', flexDirection: 'column', gap: 16 },
   card: (color) => ({
     display: 'flex',
-    gap: 16,
-    padding: 16,
+    gap: 20,
+    padding: 18,
     borderRadius: 12,
     background: colors.card,
     border: `1px solid ${colors.border}`,
-    borderLeft: `3px solid ${color}`,
+    borderLeft: `4px solid ${color}`,
     alignItems: 'center',
     flexWrap: 'wrap',
+    boxShadow: '0 1px 2px rgba(16, 24, 40, 0.04)',
   }),
   thumb: {
-    width: 160,
-    height: 90,
+    width: 240,
+    height: 150,
     objectFit: 'cover',
     borderRadius: 8,
     flexShrink: 0,
@@ -351,7 +352,7 @@ const styles = {
   },
   cardTop: { display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' },
   categoryTag: { fontSize: '0.7rem', color: colors.mutedDim },
-  cardTitle: { fontSize: '1.05rem', fontWeight: 700, marginBottom: 2 },
+  cardTitle: { fontSize: '1.2rem', fontWeight: 700, marginBottom: 4, fontFamily: font.display },
   cardDate: { fontSize: '0.8rem', color: colors.muted, fontFamily: 'monospace' },
   cardNotes: { fontSize: '0.8rem', color: colors.mutedDim, marginTop: 6, maxWidth: 520 },
   cardActions: { display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' },
