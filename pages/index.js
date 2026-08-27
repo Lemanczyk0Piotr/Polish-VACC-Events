@@ -322,7 +322,7 @@ const styles = {
   },
   sidebarItemActive: (color) => ({
     background: colors.cardAlt,
-    border: `1px solid ${color}55`,
+    border: `1px solid ${color}`,
   }),
   sidebarDot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
   sidebarItemTitle: {

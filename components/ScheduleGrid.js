@@ -1,4 +1,4 @@
-import { colors, positionTypeColor } from '../lib/theme';
+import { colors, positionTypeColor, positionTypeBarBg } from '../lib/theme';
 
 const TYPE_ORDER = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -8,14 +8,6 @@ function pad(n) {
 
 function fmtUtc(date) {
   return `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
-}
-
-function hexToRgba(hex, alpha) {
-  const h = hex.replace('#', '');
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
 // Renders a Gantt-style timeline: positions grouped by type on the left,
@@ -135,7 +127,7 @@ export default function ScheduleGrid({ event, assignments }) {
                           // rounding otherwise leaves the gridline peeking through).
                           width: `calc(${width}% + 1px)`,
                           borderColor: color,
-                          background: hexToRgba(color, 0.9),
+                          background: positionTypeBarBg[type],
                         }}
                       >
                         <div style={styles.barName}>
