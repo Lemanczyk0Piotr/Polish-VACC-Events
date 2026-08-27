@@ -6,8 +6,14 @@ import { useLang } from '../lib/i18n';
 
 const ENDORSEMENT_OPTIONS = ['PE', 'S2-CE', 'S3-CE', 'C1-CE'];
 
+function formatRosterUntil(iso, lang) {
+  if (!iso) return null;
+  const locale = lang === 'en' ? 'en-GB' : 'pl-PL';
+  return new Date(iso).toLocaleDateString(locale, { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 export default function Roster() {
-  const { t } = useLang();
+  const { lang, t } = useLang();
   const [controllers, setControllers] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -151,6 +157,11 @@ export default function Roster() {
                 </td>
                 <td style={styles.td}>
                   <span style={{ ...styles.statusDot, background: statusColor(c.status) }} /> {c.status}
+                  {c.roster_until && (
+                    <div style={styles.rosterUntil}>
+                      {t('roster.activeUntil', { date: formatRosterUntil(c.roster_until, lang) })}
+                    </div>
+                  )}
                 </td>
                 <td style={styles.td}>
                   <button style={shared.btnGhost} onClick={() => setEditing(c)}>
@@ -285,6 +296,7 @@ const styles = {
   tr: { borderBottom: `1px solid ${colors.borderLight}` },
   td: { padding: '13px 16px' },
   statusDot: { display: 'inline-block', width: 7, height: 7, borderRadius: '50%', marginRight: 6 },
+  rosterUntil: { fontSize: '0.76rem', color: colors.mutedDim, marginTop: 2, marginLeft: 13 },
   fieldLabel: { fontSize: '0.8rem', color: colors.muted, marginBottom: 6, letterSpacing: '0.03em', fontWeight: 700 },
   toggleRow: { display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.95rem', cursor: 'pointer' },
 };
