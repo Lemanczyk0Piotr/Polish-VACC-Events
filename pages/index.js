@@ -8,14 +8,20 @@ import { useLang } from '../lib/i18n';
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 function useCountdown(targetIso) {
-  const [now, setNow] = useState(() => Date.now());
+  // `now` starts as null on BOTH server and the first client render (rather
+  // than Date.now() at render time on each) — otherwise the server's render
+  // instant and the client's hydration instant almost always land in
+  // different seconds, and React throws a hydration mismatch on the digit
+  // that differs. The real clock only starts ticking once mounted.
+  const [now, setNow] = useState(null);
   useEffect(() => {
     if (!targetIso) return;
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [targetIso]);
 
-  if (!targetIso) return null;
+  if (!targetIso || now === null) return null;
   const diff = new Date(targetIso).getTime() - now;
   if (diff <= 0) return { live: true };
   const days = Math.floor(diff / (24 * 3600 * 1000));
@@ -34,13 +40,16 @@ function eventDateTime(ev) {
 
 // Live UTC ("zulu") clock — the time format ATC actually works in, so it earns
 // a prominent spot on the briefing page rather than being buried in a corner.
+// Same hydration-safe pattern as useCountdown above: null until mounted, so
+// server and first client render always agree (both show nothing yet).
 function useClock() {
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState(null);
   useEffect(() => {
+    setNow(Date.now());
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, []);
-  return new Date(now);
+  return now === null ? null : new Date(now);
 }
 
 export default function Home() {
@@ -192,12 +201,12 @@ export default function Home() {
           <div style={styles.clockCard}>
             <div style={styles.clockLabel}>{t('home.zuluLabel')}</div>
             <div style={styles.clockValue}>
-              {String(clock.getUTCHours()).padStart(2, '0')}:
-              {String(clock.getUTCMinutes()).padStart(2, '0')}:
-              {String(clock.getUTCSeconds()).padStart(2, '0')}
+              {clock
+                ? `${String(clock.getUTCHours()).padStart(2, '0')}:${String(clock.getUTCMinutes()).padStart(2, '0')}:${String(clock.getUTCSeconds()).padStart(2, '0')}`
+                : '--:--:--'}
               <span style={styles.clockZ}>Z</span>
             </div>
-            <div style={styles.clockDate}>{formatDate(clock.toISOString().slice(0, 10), lang)}</div>
+            <div style={styles.clockDate}>{clock ? formatDate(clock.toISOString().slice(0, 10), lang) : ' '}</div>
           </div>
 
           <aside style={styles.sidebar}>
