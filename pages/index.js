@@ -160,15 +160,15 @@ export default function Home() {
                 </div>
 
                 <div style={styles.heroSide}>
-                  {active.category && <div style={styles.categoryChip}>{active.category}</div>}
                   <div style={styles.countdownWrap}>
                     <div style={styles.countdownLabel}>
                       {countdown?.live ? t('home.eventLive') : t('home.timeToEvent')}
                     </div>
                     {countdown && !countdown.live && (
                       <div style={styles.countdown}>
-                        {String(countdown.days).padStart(2, '0')}d {String(countdown.hours).padStart(2, '0')}:
-                        {String(countdown.minutes).padStart(2, '0')}:{String(countdown.seconds).padStart(2, '0')}
+                        {countdown.days > 0 && <span>{String(countdown.days).padStart(2, '0')}d </span>}
+                        {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:
+                        {String(countdown.seconds).padStart(2, '0')}
                       </div>
                     )}
                   </div>
@@ -280,30 +280,19 @@ const styles = {
   },
   heroMain: { flex: '1 1 360px', minWidth: 0, maxWidth: 640 },
   heroSide: {
-    flex: '0 0 260px',
-    width: 260,
+    flex: '0 0 280px',
+    width: 280,
     alignSelf: 'stretch',
     border: `1px solid ${colors.border}`,
     borderRadius: 12,
     background: colors.cardAlt,
-    padding: '22px 20px',
+    padding: '22px 16px',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     textAlign: 'center',
     gap: 4,
-  },
-  categoryChip: {
-    fontSize: '0.72rem',
-    fontWeight: 700,
-    letterSpacing: '0.05em',
-    color: colors.muted,
-    background: colors.card,
-    border: `1px solid ${colors.border}`,
-    borderRadius: 20,
-    padding: '4px 12px',
-    marginBottom: 14,
   },
   heroActions: { display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginTop: 4 },
   heroLinkBtn: {
@@ -353,10 +342,11 @@ const styles = {
     marginBottom: 8,
   },
   countdown: {
-    fontSize: '2.3rem',
+    fontSize: '1.8rem',
     fontFamily: 'monospace',
     fontWeight: 800,
     letterSpacing: '0.01em',
+    whiteSpace: 'nowrap',
   },
   notes: {
     color: colors.muted,
