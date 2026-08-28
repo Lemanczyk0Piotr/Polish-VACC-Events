@@ -174,6 +174,19 @@ export default function Layout({ children }) {
         html { font-size: 18px; }
         body { background: ${colors.bg}; }
         .burger-btn { display: none; }
+        /* Desktop: sidebar pins itself under the topbar and scrolls only if
+           its own contents (nav + external links) ever outgrow the viewport,
+           instead of scrolling away with the page content. Kept out of the
+           React inline style so the mobile override below (which needs
+           position: fixed for the slide-in drawer) can win on narrow
+           screens — an inline style would otherwise always beat it. */
+        .app-sidebar {
+          position: sticky;
+          top: 56px;
+          align-self: flex-start;
+          height: calc(100vh - 56px);
+          overflow-y: auto;
+        }
         @media (max-width: 860px) {
           .burger-btn { display: inline-flex !important; }
           .app-sidebar {
@@ -181,6 +194,7 @@ export default function Layout({ children }) {
             top: 56px;
             left: 0;
             bottom: 0;
+            height: auto;
             transform: translateX(-100%);
             transition: transform 0.2s ease;
             z-index: 95;
@@ -261,7 +275,6 @@ const styles = {
     background: colors.card,
     borderRight: `1px solid ${colors.border}`,
     padding: '22px 14px',
-    overflowY: 'auto',
   },
   sidebarSectionLabel: {
     color: colors.amber,
