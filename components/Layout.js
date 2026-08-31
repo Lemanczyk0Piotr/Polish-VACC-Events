@@ -8,8 +8,8 @@ import { useAdminMode } from '../lib/adminMode';
 const NAV_ITEMS = [
   { href: '/', key: 'nav.opsBriefing' },
   { href: '/events', key: 'nav.events' },
-  { href: '/roster', key: 'nav.roster' },
-  { href: '/positions', key: 'nav.positions' },
+  { href: '/roster', key: 'nav.roster', adminOnly: true },
+  { href: '/positions', key: 'nav.positions', adminOnly: true },
   { href: '/top-controllers', key: 'nav.topControllers' },
 ];
 
@@ -157,9 +157,8 @@ export default function Layout({ children }) {
 
       <div style={styles.body}>
         <aside className={`app-sidebar${mobileOpen ? ' open' : ''}`} style={styles.sidebar}>
-          <div style={styles.sidebarSectionLabel}>{t('nav.sectionLabel')}</div>
           <nav style={styles.navCol}>
-            {NAV_ITEMS.map((item) => {
+            {NAV_ITEMS.filter((item) => isAdmin || !item.adminOnly).map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
@@ -371,13 +370,13 @@ const styles = {
     textTransform: 'uppercase',
     padding: '0 10px 8px',
   },
-  navCol: { display: 'flex', flexDirection: 'column', gap: 2 },
+  navCol: { display: 'flex', flexDirection: 'column', gap: 4 },
   navLink: {
-    padding: '10px 12px',
-    borderRadius: 7,
+    padding: '13px 14px',
+    borderRadius: 8,
     color: colors.muted,
     textDecoration: 'none',
-    fontSize: '0.94rem',
+    fontSize: '1.08rem',
     fontWeight: 600,
     borderLeft: '3px solid transparent',
   },

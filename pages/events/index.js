@@ -41,9 +41,12 @@ export default function Events() {
 
   useEffect(load, []);
 
+  // Non-admins can never see completed events — the toggle to reveal them
+  // is admin-only (hidden below), and this filter enforces it regardless of
+  // any stray state, since isAdmin can flip false mid-session (logout).
   const sorted = useMemo(() => {
     if (!events) return [];
-    const list = showCompleted ? events : events.filter((e) => e.status !== 'completed');
+    const list = isAdmin && showCompleted ? events : events.filter((e) => e.status !== 'completed');
     return [...list].sort((a, b) => {
       const da = `${a.event_date}T${a.time_start || '00:00:00'}`;
       const db = `${b.event_date}T${b.time_start || '00:00:00'}`;
@@ -92,9 +95,11 @@ export default function Events() {
         )}
       </div>
 
-      <button style={styles.toggleBtn} onClick={() => setShowCompleted((v) => !v)}>
-        {showCompleted ? t('events.showingCompleted') : t('events.showCompleted')}
-      </button>
+      {isAdmin && (
+        <button style={styles.toggleBtn} onClick={() => setShowCompleted((v) => !v)}>
+          {showCompleted ? t('events.showingCompleted') : t('events.showCompleted')}
+        </button>
+      )}
 
       {error && <p style={{ color: colors.red }}>{error}</p>}
 
