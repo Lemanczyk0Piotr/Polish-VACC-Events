@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
+import { requireAdmin } from '../../../lib/adminAuth';
 
 const EDITABLE_FIELDS = ['name', 'cid', 'rating', 'status', 'is_mentor', 'endorsements'];
 const ALLOWED_STATUS = ['active', 'visitor', 'inactive'];
@@ -11,6 +12,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['PUT', 'PATCH']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  if (!requireAdmin(req, res)) return;
 
   const body = req.body || {};
   const update = {};

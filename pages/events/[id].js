@@ -5,6 +5,7 @@ import ScheduleGrid from '../../components/ScheduleGrid';
 import { supabase } from '../../lib/supabaseClient';
 import { colors, shared, font, positionTypeColor, formatDate, formatTimeZ } from '../../lib/theme';
 import { useLang } from '../../lib/i18n';
+import { useAdminMode, adminFetch } from '../../lib/adminMode';
 
 const TYPE_ORDER = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -37,11 +38,13 @@ export default function EventScheduler() {
   const router = useRouter();
   const { id } = router.query;
   const { lang, t } = useLang();
+  const { isAdmin, password } = useAdminMode();
 
   const [event, setEvent] = useState(null);
   const [positions, setPositions] = useState(null);
   const [controllers, setControllers] = useState(null);
   const [assignments, setAssignments] = useState(null);
+  const [signups, setSignups] = useState(null);
   const [error, setError] = useState(null);
   const [staffedOnly, setStaffedOnly] = useState(false);
   const [addingFor, setAddingFor] = useState(null); // position id
@@ -74,6 +77,12 @@ export default function EventScheduler() {
         if (error) setError(error.message);
         else setAssignments(data || []);
       });
+    supabase
+      .from('signup_requests')
+      .select('*, controllers(name, rating), preferred_position:positions(callsign, type)')
+      .eq('event_id', id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => setSignups(data || []));
   };
 
   useEffect(load, [id]);
@@ -143,7 +152,7 @@ export default function EventScheduler() {
       return;
     }
 
-    const res = await fetch('/api/assignments', {
+    const res = await adminFetch(password, '/api/assignments', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -165,20 +174,20 @@ export default function EventScheduler() {
   };
 
   const removeAssignment = async (assignmentId) => {
-    const res = await fetch(`/api/assignments/${assignmentId}`, { method: 'DELETE' });
+    const res = await adminFetch(password, `/api/assignments/${assignmentId}`, { method: 'DELETE' });
     if (res.ok) load();
     else alert(t('scheduler.removeFailed'));
   };
 
   const clearAll = async () => {
     if (!confirm(t('scheduler.clearConfirm'))) return;
-    const res = await fetch(`/api/assignments?event_id=${id}`, { method: 'DELETE' });
+    const res = await adminFetch(password, `/api/assignments?event_id=${id}`, { method: 'DELETE' });
     if (res.ok) load();
     else alert(t('scheduler.clearFailed'));
   };
 
   const saveNotes = async () => {
-    await fetch(`/api/events/${id}`, {
+    await adminFetch(password, `/api/events/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes: notesDraft }),
@@ -223,13 +232,24 @@ export default function EventScheduler() {
             {event.time_start ? ` · ${formatTimeZ(event.time_start)}` : ''}
             {event.time_end ? `–${formatTimeZ(event.time_end)}` : ''}
           </p>
-          <div style={styles.fieldLabel}>{t('scheduler.notes')}</div>
-          <textarea
-            style={{ ...shared.input, minHeight: 90, width: '100%', resize: 'vertical' }}
-            value={notesDraft}
-            onChange={(e) => setNotesDraft(e.target.value)}
-            onBlur={saveNotes}
-          />
+          {isAdmin ? (
+            <>
+              <div style={styles.fieldLabel}>{t('scheduler.notes')}</div>
+              <textarea
+                style={{ ...shared.input, minHeight: 90, width: '100%', resize: 'vertical' }}
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                onBlur={saveNotes}
+              />
+            </>
+          ) : (
+            notesDraft && (
+              <>
+                <div style={styles.fieldLabel}>{t('scheduler.notes')}</div>
+                <p style={{ color: colors.text, whiteSpace: 'pre-wrap', margin: 0 }}>{notesDraft}</p>
+              </>
+            )
+          )}
         </div>
       </div>
 
@@ -257,6 +277,15 @@ export default function EventScheduler() {
         </div>
       </div>
 
+      <SignupForm
+        eventId={id}
+        controllers={controllers ? sortControllers(controllers) : []}
+        positions={positions || []}
+        onSaved={load}
+      />
+
+      {isAdmin && <SignupsList signups={signups} />}
+
       <div style={styles.controlsRow}>
         <button
           style={{ ...shared.btnGhost, ...(staffedOnly ? styles.toggleActive : {}) }}
@@ -270,9 +299,11 @@ export default function EventScheduler() {
         >
           {showGrid ? t('scheduler.hideGrid') : t('scheduler.showGrid')}
         </button>
-        <button style={shared.btnDanger} onClick={clearAll} disabled={!assignments || assignments.length === 0}>
-          {t('scheduler.clearAll')}
-        </button>
+        {isAdmin && (
+          <button style={shared.btnDanger} onClick={clearAll} disabled={!assignments || assignments.length === 0}>
+            {t('scheduler.clearAll')}
+          </button>
+        )}
       </div>
 
       {showGrid && (
@@ -324,27 +355,30 @@ export default function EventScheduler() {
                               : ''}
                           </div>
                         </div>
-                        <button style={styles.removeBtn} onClick={() => removeAssignment(a.id)}>
-                          ✕
-                        </button>
+                        {isAdmin && (
+                          <button style={styles.removeBtn} onClick={() => removeAssignment(a.id)}>
+                            ✕
+                          </button>
+                        )}
                       </div>
                     ))}
 
-                    {addingFor === position.id ? (
-                      <AddControllerForm
-                        controllers={controllers ? sortControllers(controllers) : []}
-                        defaultStart={defaultStartHHMM}
-                        defaultEnd={defaultEndHHMM}
-                        onCancel={() => setAddingFor(null)}
-                        onAdd={(controllerId, studentId, start, end) =>
-                          addAssignment(position.id, controllerId, studentId, start, end)
-                        }
-                      />
-                    ) : (
-                      <button style={styles.addBtn} onClick={() => setAddingFor(position.id)}>
-                        {t('scheduler.addController')}
-                      </button>
-                    )}
+                    {isAdmin &&
+                      (addingFor === position.id ? (
+                        <AddControllerForm
+                          controllers={controllers ? sortControllers(controllers) : []}
+                          defaultStart={defaultStartHHMM}
+                          defaultEnd={defaultEndHHMM}
+                          onCancel={() => setAddingFor(null)}
+                          onAdd={(controllerId, studentId, start, end) =>
+                            addAssignment(position.id, controllerId, studentId, start, end)
+                          }
+                        />
+                      ) : (
+                        <button style={styles.addBtn} onClick={() => setAddingFor(position.id)}>
+                          {t('scheduler.addController')}
+                        </button>
+                      ))}
                   </div>
                 );
               })}
@@ -421,7 +455,170 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
   );
 }
 
+// Publiczny formularz zapisu na event — widoczny dla wszystkich (nie tylko
+// administratorów), bo to jedyna akcja dostępna dla zwykłych kontrolerów bez
+// logowania. Tożsamość to po prostu wybór własnego imienia z listy
+// (roadmap: prawdziwe konta to osobny, większy fundament na później).
+function SignupForm({ eventId, controllers, positions, onSaved }) {
+  const { t } = useLang();
+  const [controllerId, setControllerId] = useState('');
+  const [choice1, setChoice1] = useState('');
+  const [choice2, setChoice2] = useState('');
+  const [choice3, setChoice3] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+  const [success, setSuccess] = useState(false);
+
+  const positionsByType = useMemo(() => {
+    const g = {};
+    for (const type of TYPE_ORDER) g[type] = [];
+    for (const p of positions) {
+      if (TYPE_ORDER.includes(p.type)) g[p.type].push(p);
+    }
+    return g;
+  }, [positions]);
+
+  const PositionOptions = () => (
+    <>
+      <option value="">{t('signup.anyPosition')}</option>
+      {TYPE_ORDER.map(
+        (type) =>
+          positionsByType[type].length > 0 && (
+            <optgroup key={type} label={type}>
+              {positionsByType[type].map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.callsign}
+                </option>
+              ))}
+            </optgroup>
+          )
+      )}
+    </>
+  );
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setErr(null);
+    setSuccess(false);
+    if (!controllerId) {
+      setErr(t('signup.validationName'));
+      return;
+    }
+    const choices = [{ position_id: choice1 || null, priority: 1 }];
+    if (choice2) choices.push({ position_id: choice2, priority: 2 });
+    if (choice3) choices.push({ position_id: choice3, priority: 3 });
+
+    setSaving(true);
+    try {
+      const res = await fetch('/api/signups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: eventId, controller_id: controllerId, choices, notes }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || t('signup.error'));
+      setSuccess(true);
+      onSaved();
+    } catch (e2) {
+      setErr(e2.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form style={{ ...shared.card, marginBottom: 20 }} onSubmit={submit}>
+      <div style={{ ...styles.fieldLabel, fontSize: '0.95rem', color: colors.amber, marginBottom: 12 }}>
+        {t('signup.sectionTitle')}
+      </div>
+
+      <div style={{ marginBottom: 14 }}>
+        <div style={styles.fieldLabel}>{t('signup.yourName')}</div>
+        <select style={{ ...shared.input, width: '100%' }} value={controllerId} onChange={(e) => setControllerId(e.target.value)}>
+          <option value="">{t('signup.selectName')}</option>
+          {controllers.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name} {c.rating ? `(${c.rating})` : ''}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div style={styles.signupChoicesRow}>
+        <div>
+          <div style={styles.fieldLabel}>{t('signup.choice', { n: 1 })}</div>
+          <select style={{ ...shared.input, width: '100%' }} value={choice1} onChange={(e) => setChoice1(e.target.value)}>
+            <PositionOptions />
+          </select>
+        </div>
+        <div>
+          <div style={styles.fieldLabel}>{t('signup.choice', { n: 2 })}</div>
+          <select style={{ ...shared.input, width: '100%' }} value={choice2} onChange={(e) => setChoice2(e.target.value)}>
+            <PositionOptions />
+          </select>
+        </div>
+        <div>
+          <div style={styles.fieldLabel}>{t('signup.choice', { n: 3 })}</div>
+          <select style={{ ...shared.input, width: '100%' }} value={choice3} onChange={(e) => setChoice3(e.target.value)}>
+            <PositionOptions />
+          </select>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
+        <div style={styles.fieldLabel}>{t('signup.notesLabel')}</div>
+        <textarea
+          style={{ ...shared.input, minHeight: 60, width: '100%', resize: 'vertical' }}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder={t('signup.notesPlaceholder')}
+        />
+      </div>
+
+      {err && <p style={{ color: colors.red, fontSize: '0.85rem', marginTop: 10 }}>{err}</p>}
+      {success && !err && <p style={{ color: colors.green, fontSize: '0.85rem', marginTop: 10 }}>{t('signup.success')}</p>}
+
+      <div style={{ marginTop: 14 }}>
+        <button type="submit" style={shared.btnPrimary} disabled={saving}>
+          {saving ? t('signup.submitting') : t('signup.submit')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+// Admin-only podgląd zgłoszeń — surowa lista, żeby admin miał czym się
+// kierować przy ręcznym przypisywaniu kontrolerów w sekcjach poniżej
+// (automatyczne dopasowanie to kolejny etap, patrz claude/feature-roadmap.md).
+function SignupsList({ signups }) {
+  const { t } = useLang();
+  if (!signups) return null;
+  return (
+    <div style={{ ...shared.card, marginBottom: 20 }}>
+      <div style={{ ...styles.fieldLabel, fontSize: '0.95rem', marginBottom: 10 }}>{t('signup.adminListTitle')}</div>
+      {signups.length === 0 ? (
+        <p style={{ color: colors.mutedDim, fontSize: '0.85rem', margin: 0 }}>{t('signup.noSignups')}</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {signups.map((s) => (
+            <div key={s.id} style={{ fontSize: '0.88rem', color: colors.text }}>
+              <span style={{ fontWeight: 700 }}>{s.controllers?.name}</span>{' '}
+              <span style={{ color: colors.mutedDim }}>{t('signup.priorityShort', { n: s.priority })}</span>{' '}
+              <span style={{ color: colors.blue }}>
+                {s.preferred_position?.callsign || t('signup.anyPosition')}
+              </span>
+              {s.notes && <span style={{ color: colors.mutedDim }}> · {s.notes}</span>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 const styles = {
+  signupChoicesRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 },
   topGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 440px) 1fr', gap: 28, marginBottom: 28 },
   banner: { width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 12, background: colors.cardAlt, boxShadow: '0 1px 3px rgba(16, 24, 40, 0.06)' },
   bannerPlaceholder: {

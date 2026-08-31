@@ -1,6 +1,9 @@
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
+import { requireAdmin } from '../../../lib/adminAuth';
 
 export default async function handler(req, res) {
+  if (!requireAdmin(req, res)) return;
+
   if (req.method === 'DELETE') {
     const { event_id } = req.query;
     if (!event_id) return res.status(400).json({ error: 'Brak event_id' });

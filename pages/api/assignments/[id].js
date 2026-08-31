@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
+import { requireAdmin } from '../../../lib/adminAuth';
 
 export default async function handler(req, res) {
   const { id } = req.query;
@@ -8,6 +9,7 @@ export default async function handler(req, res) {
     res.setHeader('Allow', ['DELETE']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  if (!requireAdmin(req, res)) return;
 
   try {
     const supabase = getSupabaseAdmin();

@@ -1,4 +1,5 @@
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
+import { requireAdmin } from '../../../lib/adminAuth';
 
 const ALLOWED_KIND = ['event', 'exam', 'announcement'];
 const ALLOWED_STATUS = ['draft', 'published', 'completed'];
@@ -18,6 +19,7 @@ const EDITABLE_FIELDS = [
 export default async function handler(req, res) {
   const { id } = req.query;
   if (!id) return res.status(400).json({ error: 'Brak id' });
+  if (!requireAdmin(req, res)) return;
 
   const supabase = getSupabaseAdmin();
 

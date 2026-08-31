@@ -4,6 +4,7 @@ import Layout from '../../components/Layout';
 import { supabase } from '../../lib/supabaseClient';
 import { colors, shared, font, eventKindMeta, eventStatusMeta, formatDate, formatTimeZ } from '../../lib/theme';
 import { useLang } from '../../lib/i18n';
+import { useAdminMode, adminFetch } from '../../lib/adminMode';
 
 const EMPTY_FORM = {
   title: '',
@@ -20,6 +21,7 @@ const EMPTY_FORM = {
 
 export default function Events() {
   const { lang, t } = useLang();
+  const { isAdmin, password } = useAdminMode();
   const [events, setEvents] = useState(null);
   const [error, setError] = useState(null);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -63,7 +65,7 @@ export default function Events() {
 
   const handleDelete = async (ev) => {
     if (!confirm(t('events.confirmDelete', { title: ev.title }))) return;
-    const res = await fetch(`/api/events/${ev.id}`, { method: 'DELETE' });
+    const res = await adminFetch(password, `/api/events/${ev.id}`, { method: 'DELETE' });
     if (res.ok) load();
     else alert(t('events.deleteFailed'));
   };
@@ -75,17 +77,19 @@ export default function Events() {
           <h1 style={shared.h1}>{t('events.title')}</h1>
           <p style={shared.sub}>{events ? t('events.count', { n: events.length }) : t('events.loading')}</p>
         </div>
-        <div style={styles.createBtns}>
-          <button style={styles.createBtn(colors.red)} onClick={() => openCreate('event')}>
-            {t('events.newEvent')}
-          </button>
-          <button style={styles.createBtn(colors.purple)} onClick={() => openCreate('exam')}>
-            {t('events.newExam')}
-          </button>
-          <button style={styles.createBtn(colors.cyan)} onClick={() => openCreate('announcement')}>
-            {t('events.newAnnouncement')}
-          </button>
-        </div>
+        {isAdmin && (
+          <div style={styles.createBtns}>
+            <button style={styles.createBtn(colors.red)} onClick={() => openCreate('event')}>
+              {t('events.newEvent')}
+            </button>
+            <button style={styles.createBtn(colors.purple)} onClick={() => openCreate('exam')}>
+              {t('events.newExam')}
+            </button>
+            <button style={styles.createBtn(colors.cyan)} onClick={() => openCreate('announcement')}>
+              {t('events.newAnnouncement')}
+            </button>
+          </div>
+        )}
       </div>
 
       <button style={styles.toggleBtn} onClick={() => setShowCompleted((v) => !v)}>
@@ -121,12 +125,16 @@ export default function Events() {
                     {t('events.signups')}
                   </Link>
                 )}
-                <button style={shared.btnGhost} onClick={() => openEdit(ev)}>
-                  {t('events.edit')}
-                </button>
-                <button style={shared.btnDanger} onClick={() => handleDelete(ev)}>
-                  {t('events.delete')}
-                </button>
+                {isAdmin && (
+                  <>
+                    <button style={shared.btnGhost} onClick={() => openEdit(ev)}>
+                      {t('events.edit')}
+                    </button>
+                    <button style={shared.btnDanger} onClick={() => handleDelete(ev)}>
+                      {t('events.delete')}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           );
@@ -153,6 +161,7 @@ export default function Events() {
 
 function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
   const { t } = useLang();
+  const { password } = useAdminMode();
   const [form, setForm] = useState(() =>
     initial
       ? {
@@ -198,7 +207,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
     const url = initial ? `/api/events/${initial.id}` : '/api/events';
     const method = initial ? 'PUT' : 'POST';
     try {
-      const res = await fetch(url, {
+      const res = await adminFetch(password, url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
