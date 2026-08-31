@@ -4,8 +4,7 @@ import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
 import { colors, font, brandGradient, eventKindMeta, formatDate, formatTimeZ } from '../lib/theme';
 import { useLang } from '../lib/i18n';
-
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+import { useAdminMode } from '../lib/adminMode';
 
 function useCountdown(targetIso) {
   // `now` starts as null on BOTH server and the first client render (rather
@@ -54,6 +53,7 @@ function useClock() {
 
 export default function Home() {
   const { lang, t } = useLang();
+  const { isAdmin } = useAdminMode();
   const clock = useClock();
   const [events, setEvents] = useState(null);
   const [controllers, setControllers] = useState(null);
@@ -79,10 +79,10 @@ export default function Home() {
     return events
       .filter((e) => {
         if (e.status === 'completed') return false;
+        // Show every scheduled upcoming event, not just those within a
+        // short window — the sidebar is the full "what's coming up" list.
         const d = new Date(eventDateTime(e)).getTime();
-        // Forward-looking window only now — past/completed events shouldn't
-        // linger in "recent and upcoming" once they're done.
-        return d >= now && d - now <= WEEK_MS;
+        return d >= now;
       })
       .sort((a, b) => new Date(eventDateTime(a)) - new Date(eventDateTime(b)));
   }, [events, today]);
@@ -138,49 +138,47 @@ export default function Home() {
                 <img src={active.image_url} alt="" style={styles.banner} />
               )}
               <div style={styles.mainCardBody}>
-                <div style={styles.heroMain}>
-                  <div style={styles.eyebrow}>{t('home.nextEvent')}</div>
-                  {eventKindMeta[active.kind] && (
-                    <span style={styles.kindBadge(eventKindMeta[active.kind])}>
-                      {eventKindMeta[active.kind].label}
+                {countdown && (
+                  <div style={styles.countdownBar}>
+                    <span style={styles.countdownLabel}>
+                      {countdown.live ? t('home.eventLive') : t('home.timeToEvent')}
                     </span>
-                  )}
-                  <h1 style={styles.title}>{active.title}</h1>
-                  <p style={styles.dateLine}>
-                    {formatDate(active.event_date, lang)}
-                    {active.time_start ? ` · ${formatTimeZ(active.time_start)}` : ''}
-                    {active.time_end ? `–${formatTimeZ(active.time_end)}` : ''}
-                  </p>
-
-                  {active.notes && <p style={styles.notes}>{active.notes}</p>}
-
-                  <div style={styles.heroActions}>
-                    {active.kind === 'event' && (
-                      <Link href={`/events/${active.id}`} style={styles.scheduleLink}>
-                        {t('home.viewSchedule')}
-                      </Link>
-                    )}
-                    {active.external_link && (
-                      <a href={active.external_link} target="_blank" rel="noopener noreferrer" style={styles.heroLinkBtn}>
-                        {t('home.externalLink')}
-                      </a>
-                    )}
-                  </div>
-                </div>
-
-                <div style={styles.heroSide}>
-                  <div style={styles.countdownWrap}>
-                    <div style={styles.countdownLabel}>
-                      {countdown?.live ? t('home.eventLive') : t('home.timeToEvent')}
-                    </div>
-                    {countdown && !countdown.live && (
-                      <div style={styles.countdown}>
+                    {!countdown.live && (
+                      <span style={styles.countdown}>
                         {countdown.days > 0 && <span>{String(countdown.days).padStart(2, '0')}d </span>}
                         {String(countdown.hours).padStart(2, '0')}:{String(countdown.minutes).padStart(2, '0')}:
                         {String(countdown.seconds).padStart(2, '0')}
-                      </div>
+                      </span>
                     )}
                   </div>
+                )}
+
+                <div style={styles.eyebrow}>{t('home.nextEvent')}</div>
+                {eventKindMeta[active.kind] && (
+                  <span style={styles.kindBadge(eventKindMeta[active.kind])}>
+                    {eventKindMeta[active.kind].label}
+                  </span>
+                )}
+                <h1 style={styles.title}>{active.title}</h1>
+                <p style={styles.dateLine}>
+                  {formatDate(active.event_date, lang)}
+                  {active.time_start ? ` · ${formatTimeZ(active.time_start)}` : ''}
+                  {active.time_end ? `–${formatTimeZ(active.time_end)}` : ''}
+                </p>
+
+                {active.notes && <p style={styles.notes}>{active.notes}</p>}
+
+                <div style={styles.heroActions}>
+                  {active.kind === 'event' && (
+                    <Link href={`/events/${active.id}`} style={styles.scheduleLink}>
+                      {t('home.viewSchedule')}
+                    </Link>
+                  )}
+                  {active.external_link && (
+                    <a href={active.external_link} target="_blank" rel="noopener noreferrer" style={styles.heroLinkBtn}>
+                      {t('home.externalLink')}
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -190,11 +188,13 @@ export default function Home() {
             </div>
           )}
 
-          <div style={styles.statsRow}>
-            <StatTile label={t('home.statActive')} value={activeCount} />
-            <StatTile label={t('home.statRegistered')} value={registeredCount} />
-            <StatTile label={t('home.statEvents')} value={totalEvents} />
-          </div>
+          {isAdmin && (
+            <div style={styles.statsRow}>
+              <StatTile label={t('home.statActive')} value={activeCount} />
+              <StatTile label={t('home.statRegistered')} value={registeredCount} />
+              <StatTile label={t('home.statEvents')} value={totalEvents} />
+            </div>
+          )}
         </div>
 
         <div style={styles.sidebarCol}>
@@ -283,25 +283,19 @@ const styles = {
   mainCardBody: {
     padding: '28px',
     display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'flex-start',
-    gap: 28,
-  },
-  heroMain: { flex: '1 1 360px', minWidth: 0, maxWidth: 640 },
-  heroSide: {
-    flex: '0 0 280px',
-    width: 280,
-    alignSelf: 'stretch',
-    border: `1px solid ${colors.border}`,
-    borderRadius: 12,
-    background: colors.cardAlt,
-    padding: '22px 16px',
-    display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    textAlign: 'center',
-    gap: 4,
+    alignItems: 'stretch',
+  },
+  countdownBar: {
+    display: 'flex',
+    alignItems: 'baseline',
+    gap: 12,
+    flexWrap: 'wrap',
+    border: `1px solid ${colors.border}`,
+    borderRadius: 10,
+    background: colors.cardAlt,
+    padding: '12px 16px',
+    marginBottom: 20,
   },
   heroActions: { display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginTop: 4 },
   heroLinkBtn: {
@@ -342,13 +336,11 @@ const styles = {
   },
   title: { fontSize: '1.9rem', margin: '0 0 8px', fontFamily: font.display, fontWeight: 700, letterSpacing: '-0.01em' },
   dateLine: { color: colors.muted, margin: '0 0 20px', fontFamily: 'monospace' },
-  countdownWrap: {},
   countdownLabel: {
     fontSize: '0.75rem',
     letterSpacing: '0.1em',
     color: colors.amber,
     fontWeight: 700,
-    marginBottom: 8,
   },
   countdown: {
     fontSize: '1.8rem',
@@ -361,7 +353,6 @@ const styles = {
     color: colors.muted,
     fontSize: '0.95rem',
     lineHeight: 1.6,
-    maxWidth: 640,
     margin: '0 0 12px',
     whiteSpace: 'pre-wrap',
   },
