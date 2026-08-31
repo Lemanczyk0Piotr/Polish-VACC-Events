@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
 import { colors, shared, formatDate } from '../lib/theme';
 import { useLang } from '../lib/i18n';
+import { useAdminMode } from '../lib/adminMode';
 
 function fmtDuration(mins) {
   if (!mins) return '0h 00m';
@@ -13,6 +14,7 @@ function fmtDuration(mins) {
 
 export default function TopControllers() {
   const { lang, t } = useLang();
+  const { isAdmin } = useAdminMode();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
@@ -20,7 +22,7 @@ export default function TopControllers() {
   useEffect(() => {
     supabase
       .from('event_assignments')
-      .select('id, session_minutes, controllers:controllers!event_assignments_controller_id_fkey(id, name, rating), positions(callsign, type), events!inner(title, event_date, status)')
+      .select('id, session_minutes, controllers:controllers!event_assignments_controller_id_fkey(id, name, cid, rating), positions(callsign, type), events!inner(title, event_date, status)')
       .eq('events.status', 'completed')
       .then(({ data, error }) => {
         if (error) setError(error.message);
@@ -38,6 +40,7 @@ export default function TopControllers() {
         byController.set(id, {
           id,
           name: r.controllers.name,
+          cid: r.controllers.cid,
           rating: r.controllers.rating,
           totalMinutes: 0,
           entries: [],
@@ -60,11 +63,16 @@ export default function TopControllers() {
   }, [rows]);
 
   const exportCsv = () => {
-    const lines = [['Rank', 'Name', 'Rating', 'Event', 'Date', 'Position', 'Duration (min)'].join(',')];
+    // Non-admins only ever see CIDs in the UI (patrz render niżej) — CSV
+    // eksportowane przez nich musi zachować tę samą granicę, inaczej
+    // eksport ujawniałby nazwiska, które strona celowo ukrywa.
+    const idLabel = isAdmin ? 'Name' : 'CID';
+    const idValue = (c) => (isAdmin ? c.name : c.cid || '—');
+    const lines = [['Rank', idLabel, 'Rating', 'Event', 'Date', 'Position', 'Duration (min)'].join(',')];
     ranked.forEach((c, i) => {
       c.entries.forEach((e) => {
         lines.push(
-          [i + 1, csvEscape(c.name), c.rating || '', csvEscape(e.event || ''), e.date || '', e.callsign || '', e.minutes].join(',')
+          [i + 1, csvEscape(idValue(c)), c.rating || '', csvEscape(e.event || ''), e.date || '', e.callsign || '', e.minutes].join(',')
         );
       });
     });
@@ -99,7 +107,7 @@ export default function TopControllers() {
             <button style={styles.rowBtn} onClick={() => setExpanded((v) => (v === c.id ? null : c.id))}>
               <span style={styles.rank}>#{i + 1}</span>
               <span style={{ flex: 1, textAlign: 'left' }}>
-                <span style={{ fontWeight: 700 }}>{c.name}</span>{' '}
+                <span style={{ fontWeight: 700 }}>{isAdmin ? c.name : c.cid || '—'}</span>{' '}
                 {c.rating && <span style={shared.badge(colors.blue, colors.blueBg)}>{c.rating}</span>}
               </span>
               <span style={{ color: colors.amber, fontFamily: 'monospace', fontWeight: 700 }}>
