@@ -132,10 +132,10 @@ export default function Events() {
                 )}
                 {isAdmin && (
                   <>
-                    <button style={shared.btnGhost} onClick={() => openEdit(ev)}>
+                    <button style={styles.editBtn} onClick={() => openEdit(ev)}>
                       {t('events.edit')}
                     </button>
-                    <button style={shared.btnDanger} onClick={() => handleDelete(ev)}>
+                    <button style={styles.deleteBtn} onClick={() => handleDelete(ev)}>
                       {t('events.delete')}
                     </button>
                   </>
@@ -374,14 +374,35 @@ const styles = {
   cardNotes: { fontSize: '0.9rem', color: colors.mutedDim, marginTop: 6, maxWidth: 560 },
   cardActions: { display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' },
   scheduleBtn: {
-    padding: '11px 16px',
-    borderRadius: 8,
+    padding: '14px 24px',
+    borderRadius: 9,
     border: `1px solid ${colors.amber}`,
     background: colors.amberBg,
     color: colors.amber,
     fontWeight: 700,
-    fontSize: '0.85rem',
+    fontSize: '1rem',
     textDecoration: 'none',
+  },
+  editBtn: {
+    padding: '13px 20px',
+    borderRadius: 9,
+    border: `1px solid ${colors.border}`,
+    background: 'transparent',
+    color: colors.muted,
+    fontWeight: 600,
+    fontSize: '0.95rem',
+    letterSpacing: '0.02em',
+    cursor: 'pointer',
+  },
+  deleteBtn: {
+    padding: '13px 20px',
+    borderRadius: 9,
+    border: `1px solid ${colors.red}`,
+    background: colors.redBg,
+    color: colors.red,
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    cursor: 'pointer',
   },
   kindRow: { display: 'flex', gap: 8, marginBottom: 18, flexWrap: 'wrap' },
   kindPill: {

@@ -92,9 +92,11 @@ export default function TopControllers() {
           <h1 style={shared.h1}>{t('top.title')}</h1>
           <p style={shared.sub}>{t('top.subtitle')}</p>
         </div>
-        <button style={shared.btnPrimary} onClick={exportCsv} disabled={!ranked.length}>
-          {t('top.exportCsv')}
-        </button>
+        {isAdmin && (
+          <button style={shared.btnPrimary} onClick={exportCsv} disabled={!ranked.length}>
+            {t('top.exportCsv')}
+          </button>
+        )}
       </div>
 
       {error && <p style={{ color: colors.red }}>{error}</p>}
