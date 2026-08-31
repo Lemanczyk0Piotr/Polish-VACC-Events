@@ -76,7 +76,12 @@ export default function ScheduleGrid({ event, assignments }) {
   return (
     <div style={styles.wrap}>
       <div style={styles.axisRow}>
-        <div style={styles.labelCol} />
+        <div style={styles.labelCol}>
+          <div style={styles.axisEventTitle}>{event.title}</div>
+          <div style={styles.axisEventTime}>
+            {fmtUtc(axisStart)}-{fmtUtc(axisEnd)}z
+          </div>
+        </div>
         <div style={styles.trackCol}>
           {ticks.map((t, i) => {
             // Center every label except the very first/last, which would
@@ -125,11 +130,14 @@ export default function ScheduleGrid({ event, assignments }) {
                         style={{
                           ...styles.bar,
                           left: `${left}%`,
-                          // +1px closes the hairline seam that shows up between
-                          // back-to-back shifts on the same position (sub-pixel
-                          // rounding otherwise leaves the gridline peeking through).
-                          width: `calc(${width}% + 1px)`,
+                          // -2px (instead of the previous +1px overlap) leaves a
+                          // small visible gap between back-to-back shifts on the
+                          // same position — the old overlap hid the seam
+                          // entirely, making adjacent controllers' shifts blend
+                          // into one solid bar with no visible boundary.
+                          width: `calc(${width}% - 2px)`,
                           borderColor: color,
+                          borderWidth: 2,
                           background: positionTypeBarBg[type],
                         }}
                       >
@@ -157,6 +165,18 @@ const styles = {
   wrap: { overflowX: 'hidden' },
   axisRow: { display: 'flex', marginBottom: 10 },
   labelCol: { width: 150, flexShrink: 0 },
+  axisEventTitle: {
+    fontWeight: 700,
+    fontSize: '0.9rem',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+  },
+  axisEventTime: {
+    fontSize: '0.78rem',
+    color: colors.mutedDim,
+    fontFamily: 'monospace',
+  },
   trackCol: { position: 'relative', flex: 1, minHeight: 22 },
   tick: {
     position: 'absolute',
