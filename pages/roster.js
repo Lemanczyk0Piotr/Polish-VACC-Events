@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
 import { colors, shared, RATING_RANK, endorsementBadges } from '../lib/theme';
 import { useLang } from '../lib/i18n';
+import { useAdminMode, adminFetch } from '../lib/adminMode';
 
 const ENDORSEMENT_OPTIONS = ['PE', 'S2-CE', 'S3-CE', 'C1-CE'];
 
@@ -14,6 +15,7 @@ function formatRosterUntil(iso, lang) {
 
 export default function Roster() {
   const { lang, t } = useLang();
+  const { isAdmin, password } = useAdminMode();
   const [controllers, setControllers] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
@@ -39,7 +41,7 @@ export default function Roster() {
     setSyncing(true);
     setSyncMsg(null);
     try {
-      const res = await fetch('/api/sync/roster', { method: 'POST' });
+      const res = await adminFetch(password, '/api/sync/roster', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t('roster.syncError'));
       setSyncMsg(t('roster.syncSuccess', { n: data.synced, deactivated: data.deactivated || 0 }));
@@ -104,12 +106,14 @@ export default function Roster() {
             {controllers ? t('roster.count', { n: activeCount }) : t('roster.loading')}
           </p>
         </div>
-        <div style={{ textAlign: 'right' }}>
-          <button onClick={handleSync} disabled={syncing} style={shared.btnPrimary}>
-            {syncing ? t('roster.syncing') : t('roster.syncNow')}
-          </button>
-          {syncMsg && <div style={styles.syncMsg}>{syncMsg}</div>}
-        </div>
+        {isAdmin && (
+          <div style={{ textAlign: 'right' }}>
+            <button onClick={handleSync} disabled={syncing} style={shared.btnPrimary}>
+              {syncing ? t('roster.syncing') : t('roster.syncNow')}
+            </button>
+            {syncMsg && <div style={styles.syncMsg}>{syncMsg}</div>}
+          </div>
+        )}
       </div>
 
       <input
@@ -136,7 +140,7 @@ export default function Roster() {
                 {t('roster.colRating')}{sortArrow('rating')}
               </th>
               <th style={styles.th}>{t('roster.colStatus')}</th>
-              <th style={styles.th}></th>
+              {isAdmin && <th style={styles.th}></th>}
             </tr>
           </thead>
           <tbody>
@@ -163,11 +167,13 @@ export default function Roster() {
                     </div>
                   )}
                 </td>
-                <td style={styles.td}>
-                  <button style={shared.btnGhost} onClick={() => setEditing(c)}>
-                    {t('roster.edit')}
-                  </button>
-                </td>
+                {isAdmin && (
+                  <td style={styles.td}>
+                    <button style={shared.btnGhost} onClick={() => setEditing(c)}>
+                      {t('roster.edit')}
+                    </button>
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -196,6 +202,7 @@ function statusColor(status) {
 
 function EditControllerModal({ controller, onClose, onSaved }) {
   const { t } = useLang();
+  const { password } = useAdminMode();
   const [status, setStatus] = useState(controller.status || 'active');
   const [isMentor, setIsMentor] = useState(!!controller.is_mentor);
   const [endorsements, setEndorsements] = useState(controller.endorsements || []);
@@ -208,7 +215,7 @@ function EditControllerModal({ controller, onClose, onSaved }) {
     e.preventDefault();
     setSaving(true);
     try {
-      const res = await fetch(`/api/controllers/${controller.id}`, {
+      const res = await adminFetch(password, `/api/controllers/${controller.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status, is_mentor: isMentor, endorsements }),

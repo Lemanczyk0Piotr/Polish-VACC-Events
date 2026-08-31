@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { colors, font, brandGradient } from '../lib/theme';
+import { colors, font, brandGradient, shared } from '../lib/theme';
 import { useLang } from '../lib/i18n';
+import { useAdminMode } from '../lib/adminMode';
 
 const NAV_ITEMS = [
   { href: '/', key: 'nav.opsBriefing' },
@@ -60,10 +61,21 @@ function MoonIcon({ size = 16 }) {
   );
 }
 
+function LockIcon({ size = 15 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5" y="11" width="14" height="10" rx="2" fill="#fff" />
+      <path d="M8 11V7.5a4 4 0 0 1 8 0V11" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export default function Layout({ children }) {
   const router = useRouter();
   const { lang, setLang, t } = useLang();
+  const { isAdmin, logout } = useAdminMode();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
   // Default matches the server-rendered markup (light); the real stored
   // preference is picked up client-side right after mount to avoid a
   // hydration mismatch. The theme itself is already applied instantly by
@@ -118,6 +130,20 @@ export default function Layout({ children }) {
           >
             {isDark ? <SunIcon /> : <MoonIcon />}
           </button>
+          {isAdmin ? (
+            <button style={styles.adminBadge} onClick={logout} title={t('admin.logoutBtn')}>
+              <LockIcon /> {t('admin.badge')}
+            </button>
+          ) : (
+            <button
+              style={styles.themeToggle}
+              onClick={() => setAdminModalOpen(true)}
+              aria-label={t('admin.loginTooltip')}
+              title={t('admin.loginTooltip')}
+            >
+              <LockIcon />
+            </button>
+          )}
           <button
             className="burger-btn"
             style={styles.burger}
@@ -203,6 +229,53 @@ export default function Layout({ children }) {
           .app-sidebar.open { transform: translateX(0); }
         }
       `}</style>
+
+      {adminModalOpen && <AdminLoginModal onClose={() => setAdminModalOpen(false)} />}
+    </div>
+  );
+}
+
+function AdminLoginModal({ onClose }) {
+  const { t } = useLang();
+  const { login } = useAdminMode();
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
+  const [checking, setChecking] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setChecking(true);
+    setError(null);
+    const ok = await login(password);
+    setChecking(false);
+    if (ok) onClose();
+    else setError(t('admin.invalidPassword'));
+  };
+
+  return (
+    <div style={shared.modalOverlay} onClick={onClose}>
+      <form style={{ ...shared.modal, maxWidth: 360 }} onClick={(e) => e.stopPropagation()} onSubmit={submit}>
+        <h2 style={shared.h1}>{t('admin.modalTitle')}</h2>
+        <label style={{ display: 'block', marginBottom: 14 }}>
+          <div style={{ fontSize: '0.8rem', color: colors.muted, marginBottom: 6 }}>{t('admin.passwordLabel')}</div>
+          <input
+            type="password"
+            autoFocus
+            style={{ ...shared.input, width: '100%' }}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </label>
+        {error && <p style={{ color: colors.red, fontSize: '0.85rem' }}>{error}</p>}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 }}>
+          <button type="button" style={shared.btnGhost} onClick={onClose}>
+            {t('admin.cancel')}
+          </button>
+          <button type="submit" style={shared.btnPrimary} disabled={checking || !password}>
+            {checking ? t('admin.loggingIn') : t('admin.loginBtn')}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -267,6 +340,20 @@ const styles = {
     fontWeight: 800,
     letterSpacing: '0.03em',
     cursor: 'pointer',
+  },
+  adminBadge: {
+    background: 'rgba(255,255,255,0.22)',
+    border: '1px solid rgba(255,255,255,0.5)',
+    borderRadius: 8,
+    padding: '7px 10px',
+    color: '#fff',
+    fontSize: '0.72rem',
+    fontWeight: 800,
+    letterSpacing: '0.06em',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
   },
   body: { flex: 1, display: 'flex', alignItems: 'stretch' },
   sidebar: {
