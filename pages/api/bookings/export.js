@@ -14,7 +14,7 @@
 //             sessionType (1=normal, 2=training, 3=exam, 4=sweatbox)
 //   opcjonalne: comment
 //   token wymagany na wszystkich endpointach (wzorem lib/rosterSync.js i
-//   pages/api/bookings.js — jako parametr query string).
+//   pages/api/bookings/index.js — jako parametr query string).
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireAdmin } from '../../../lib/adminAuth';
 
@@ -95,7 +95,16 @@ export default async function handler(req, res) {
     try {
       const upstreamRes = await fetch(upstreamUrl.toString(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          // Bez tego Laravel (jeśli to on stoi za CoreVACC) nie widzi że
+          // klient chce JSON i przy błędzie (404/422/500/przekierowanie do
+          // logowania) odsyła całą stronę HTML dashboardu zamiast czytelnego
+          // komunikatu błędu — dokładnie to zaobserwowano przy pierwszym
+          // teście (odpowiedź = cały <!doctype html> z "Core • Polish VACC").
+          Accept: 'application/json',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
         body: JSON.stringify({
           name: ownerName,
           bookingdate,
@@ -107,7 +116,16 @@ export default async function handler(req, res) {
         }),
       });
       const contentType = upstreamRes.headers.get('content-type') || '';
-      const body = contentType.includes('application/json') ? await upstreamRes.json() : await upstreamRes.text();
+      let body;
+      if (contentType.includes('application/json')) {
+        body = await upstreamRes.json();
+      } else {
+        // Nie JSON — najpewniej dalej strona HTML (auth/routing problem po
+        // stronie CoreVACC). Przycinamy, żeby alert() w przeglądarce był
+        // czytelny zamiast zalewać ekran całym dokumentem.
+        const text = await upstreamRes.text();
+        body = `[HTTP ${upstreamRes.status}, non-JSON response] ${text.slice(0, 200).replace(/\s+/g, ' ').trim()}…`;
+      }
 
       if (!upstreamRes.ok) {
         failed.push({ position: callsign, message: typeof body === 'string' ? body : JSON.stringify(body) });
