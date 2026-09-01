@@ -51,6 +51,7 @@ export default function EventScheduler() {
   const [addingFor, setAddingFor] = useState(null); // position id
   const [notesDraft, setNotesDraft] = useState('');
   const [showGrid, setShowGrid] = useState(false);
+  const [exportingBookings, setExportingBookings] = useState(false);
 
   const load = () => {
     if (!id) return;
@@ -187,6 +188,39 @@ export default function EventScheduler() {
     else alert(t('scheduler.clearFailed'));
   };
 
+  const exportBookings = async () => {
+    const staffedPositions = new Set((assignments || []).map((a) => a.position_id));
+    if (staffedPositions.size === 0) {
+      alert(t('scheduler.exportBookingsNone'));
+      return;
+    }
+    if (!confirm(t('scheduler.exportBookingsConfirm', { n: staffedPositions.size }))) return;
+    setExportingBookings(true);
+    try {
+      const res = await adminFetch(password, '/api/bookings/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || t('scheduler.exportBookingsFailed'));
+        return;
+      }
+      const ok = (data.created || []).length;
+      const fail = (data.failed || []).length;
+      let msg = t('scheduler.exportBookingsResult', { ok, fail });
+      if (fail > 0) {
+        msg += '\n' + data.failed.map((f) => `${f.position}: ${f.message}`).join('\n');
+      }
+      alert(msg);
+    } catch (e) {
+      alert(t('scheduler.exportBookingsFailed'));
+    } finally {
+      setExportingBookings(false);
+    }
+  };
+
   const saveNotes = async () => {
     await adminFetch(password, `/api/events/${id}`, {
       method: 'PUT',
@@ -305,6 +339,13 @@ export default function EventScheduler() {
             </button>
             <button style={shared.btnDanger} onClick={clearAll} disabled={!assignments || assignments.length === 0}>
               {t('scheduler.clearAll')}
+            </button>
+            <button
+              style={shared.btnGhost}
+              onClick={exportBookings}
+              disabled={exportingBookings || !assignments || assignments.length === 0}
+            >
+              {exportingBookings ? t('scheduler.exportBookingsBusy') : t('scheduler.exportBookings')}
             </button>
           </div>
 
