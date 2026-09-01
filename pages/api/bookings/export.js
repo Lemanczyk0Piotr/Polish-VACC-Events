@@ -13,8 +13,18 @@
 //             timestart ("HH:MM"), timeend ("HH:MM"), position (np. "EPKK_TWR"),
 //             sessionType (1=normal, 2=training, 3=exam, 4=sweatbox)
 //   opcjonalne: comment
-//   token wymagany na wszystkich endpointach (wzorem lib/rosterSync.js i
-//   pages/api/bookings/index.js — jako parametr query string).
+//   token wymagany na wszystkich endpointach (query string, wzorem
+//   lib/rosterSync.js i pages/api/bookings/index.js — dodatkowo powielony w
+//   ciele formularza dla pewności).
+//
+// Historia debugowania (2026-09-02, bo endpoint jest nieudokumentowany
+// publicznie): pierwszy test — JSON body bez nagłówka Accept — CoreVACC
+// odsyłał całą stronę HTML dashboardu zamiast błędu (Laravel domyślnie robi
+// tak, gdy request nie deklaruje że chce JSON). Po dodaniu
+// Accept/X-Requested-With: prawdziwy JSON, ale {"message":"Server Error"}
+// (500) dla każdej pozycji — objaw typowy dla starego PHP endpointu
+// czytającego $_POST, któremu wysłaliśmy surowy JSON zamiast
+// x-www-form-urlencoded. Obecnie: x-www-form-urlencoded.
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireAdmin } from '../../../lib/adminAuth';
 
@@ -92,11 +102,30 @@ export default async function handler(req, res) {
     const upstreamUrl = new URL('https://cv.plvacc.pl/api/booking/new');
     upstreamUrl.searchParams.set('token', token);
 
+    // Drugi test (2026-09-02): nagłówki Accept/X-Requested-With naprawiły
+    // odbiór odpowiedzi (dostajemy teraz JSON zamiast całej strony HTML), ale
+    // każda pozycja dostaje generyczne {"message":"Server Error"} (500) — to
+    // klasyczny objaw starego/legacy PHP endpointu, który czyta dane z
+    // $_POST (czyli classic form-urlencoded), a NIE z surowego JSON body.
+    // Przechodzimy więc na application/x-www-form-urlencoded (+ token też w
+    // ciele, na wszelki wypadek, obok query string, który już działa dla
+    // odczytowych endpointów GET).
+    const form = new URLSearchParams({
+      token,
+      name: ownerName,
+      bookingdate,
+      timestart,
+      timeend,
+      position: callsign,
+      sessionType: String(SESSION_TYPE_NORMAL),
+      comment: event.title,
+    });
+
     try {
       const upstreamRes = await fetch(upstreamUrl.toString(), {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
           // Bez tego Laravel (jeśli to on stoi za CoreVACC) nie widzi że
           // klient chce JSON i przy błędzie (404/422/500/przekierowanie do
           // logowania) odsyła całą stronę HTML dashboardu zamiast czytelnego
@@ -105,15 +134,7 @@ export default async function handler(req, res) {
           Accept: 'application/json',
           'X-Requested-With': 'XMLHttpRequest',
         },
-        body: JSON.stringify({
-          name: ownerName,
-          bookingdate,
-          timestart,
-          timeend,
-          position: callsign,
-          sessionType: SESSION_TYPE_NORMAL,
-          comment: event.title,
-        }),
+        body: form.toString(),
       });
       const contentType = upstreamRes.headers.get('content-type') || '';
       let body;
