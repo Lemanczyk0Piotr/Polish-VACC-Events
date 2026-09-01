@@ -131,12 +131,13 @@ export default function ScheduleGrid({ event, assignments }) {
                         key={a.id}
                         style={{
                           ...styles.bar,
-                          // Inset both edges so a strip of the track's own
-                          // background shows between back-to-back shifts —
-                          // one color visibly ends, a gap of background
-                          // color follows, then the next tile begins.
-                          left: `calc(${left}% + 4px)`,
-                          width: `calc(${width}% - 8px)`,
+                          // Inset both edges 5px so a 10px strip of the
+                          // track's own background shows between
+                          // back-to-back shifts — one color visibly ends,
+                          // a 10px gap of background color follows, then
+                          // the next tile begins.
+                          left: `calc(${left}% + 5px)`,
+                          width: `calc(${width}% - 10px)`,
                           borderColor: color,
                           background: positionTypeBarBg[type],
                         }}
