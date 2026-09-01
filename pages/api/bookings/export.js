@@ -6,11 +6,16 @@
 // jest zawsze konto powiązane z PLVACC_API_TOKEN (patrz PLVACC_BOOKING_OWNER_NAME
 // poniżej), zgodnie z wyraźną prośbą admina.
 //
-// Kontrakt API CoreVACC (potwierdzony przez admina, brak publicznej
-// dokumentacji — nie zgadywany):
+// Kontrakt API CoreVACC — pola potwierdzone 2026-09-02 przez podgląd
+// prawdziwego zapytania (DevTools Network) jakie wysyła WŁASNY formularz
+// CoreVACC pod /addNewBooking (sesja+CSRF, inny route niż /api/booking/new,
+// ale te same nazwy pól modelu):
 //   [POST] cv.plvacc.pl/api/booking/new
-//   wymagane: name (format "Imię Nazwisko - CID"), bookingdate ("Y-m-d"),
-//             timestart ("HH:MM"), timeend ("HH:MM"), position (np. "EPKK_TWR"),
+//   wymagane: controller (format "Imię Nazwisko - CID", np. "Karol Rosa -
+//             1608875" — UWAGA: publiczna dokumentacja na plvacc.pl/API/
+//             błędnie nazywa to pole "name", w rzeczywistości to
+//             "controller"), bookingdate ("Y-m-d"), timestart ("HH:MM"),
+//             timeend ("HH:MM"), position (np. "EPWA_TWR"),
 //             sessionType (1=normal, 2=training, 3=exam, 4=sweatbox)
 //   opcjonalne: comment
 //   token wymagany na wszystkich endpointach (query string, wzorem
@@ -18,13 +23,16 @@
 //   ciele formularza dla pewności).
 //
 // Historia debugowania (2026-09-02, bo endpoint jest nieudokumentowany
-// publicznie): pierwszy test — JSON body bez nagłówka Accept — CoreVACC
-// odsyłał całą stronę HTML dashboardu zamiast błędu (Laravel domyślnie robi
-// tak, gdy request nie deklaruje że chce JSON). Po dodaniu
-// Accept/X-Requested-With: prawdziwy JSON, ale {"message":"Server Error"}
-// (500) dla każdej pozycji — objaw typowy dla starego PHP endpointu
-// czytającego $_POST, któremu wysłaliśmy surowy JSON zamiast
-// x-www-form-urlencoded. Obecnie: x-www-form-urlencoded.
+// publicznie): (1) JSON body bez nagłówka Accept — CoreVACC odsyłał całą
+// stronę HTML dashboardu zamiast błędu (Laravel domyślnie robi tak, gdy
+// request nie deklaruje że chce JSON) → naprawione nagłówkami
+// Accept/X-Requested-With. (2) form-urlencoded z polem "name" (zgodnie z
+// błędną publiczną dokumentacją) — {"message":"Server Error"} (500) dla
+// każdej pozycji, potwierdzone też gołym żądaniem PowerShell bez udziału tej
+// apki, więc problem był w samych danych, nie w kliencie. (3) Podejrzenie
+// potwierdzone przez podgląd prawdziwego ruchu sieciowego: pole nazywa się
+// "controller", nie "name" — stąd serwer dostawał puste/nieistniejące pole i
+// wywalał się z generycznym 500 zamiast czytelnego błędu walidacji.
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireAdmin } from '../../../lib/adminAuth';
 
@@ -102,17 +110,9 @@ export default async function handler(req, res) {
     const upstreamUrl = new URL('https://cv.plvacc.pl/api/booking/new');
     upstreamUrl.searchParams.set('token', token);
 
-    // Drugi test (2026-09-02): nagłówki Accept/X-Requested-With naprawiły
-    // odbiór odpowiedzi (dostajemy teraz JSON zamiast całej strony HTML), ale
-    // każda pozycja dostaje generyczne {"message":"Server Error"} (500) — to
-    // klasyczny objaw starego/legacy PHP endpointu, który czyta dane z
-    // $_POST (czyli classic form-urlencoded), a NIE z surowego JSON body.
-    // Przechodzimy więc na application/x-www-form-urlencoded (+ token też w
-    // ciele, na wszelki wypadek, obok query string, który już działa dla
-    // odczytowych endpointów GET).
     const form = new URLSearchParams({
       token,
-      name: ownerName,
+      controller: ownerName,
       bookingdate,
       timestart,
       timeend,
