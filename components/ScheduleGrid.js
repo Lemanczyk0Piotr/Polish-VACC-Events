@@ -120,38 +120,52 @@ export default function ScheduleGrid({ event, assignments }) {
                     backgroundSize: `${quarterPct}% 100%`,
                   }}
                 >
-                  {p.items.map((a) => {
-                    const s = new Date(a.time_start);
-                    const e = new Date(a.time_end);
-                    const left = pctOf(s);
-                    const width = pctOf(e) - left;
-                    const studentName = a.student?.name;
-                    return (
-                      <div
-                        key={a.id}
-                        style={{
-                          ...styles.bar,
-                          // Inset both edges 10px so a 20px strip of the
-                          // track's own background shows between
-                          // back-to-back shifts — one color visibly ends,
-                          // a 20px gap of background color follows, then
-                          // the next tile begins.
-                          left: `calc(${left}% + 10px)`,
-                          width: `calc(${width}% - 20px)`,
-                          borderColor: color,
-                          background: positionTypeBarBg[type],
-                        }}
-                      >
-                        <div style={styles.barName}>
-                          {a.controllers?.name} {a.controllers?.rating}
-                          {studentName ? `${t('grid.studentLabel')}${studentName}` : ''}
-                        </div>
-                        <div style={styles.barTime}>
-                          {fmtUtc(s)}-{fmtUtc(e)}z
-                        </div>
-                      </div>
+                  {(() => {
+                    // Sort so we can tell, per item, whether its left/right
+                    // edge actually touches a neighboring shift on this same
+                    // position — only THOSE edges get inset for a gap. An
+                    // item that starts at the very beginning of the event
+                    // (or ends at the very end, or simply has no adjacent
+                    // shift touching it) renders flush to its real boundary
+                    // instead of being shrunk on every side.
+                    const sorted = [...p.items].sort(
+                      (a, b) => new Date(a.time_start).getTime() - new Date(b.time_start).getTime()
                     );
-                  })}
+                    return sorted.map((a, idx) => {
+                      const s = new Date(a.time_start);
+                      const e = new Date(a.time_end);
+                      const left = pctOf(s);
+                      const width = pctOf(e) - left;
+                      const studentName = a.student?.name;
+                      const prev = sorted[idx - 1];
+                      const next = sorted[idx + 1];
+                      const touchesPrev = prev && new Date(prev.time_end).getTime() === s.getTime();
+                      const touchesNext = next && new Date(next.time_start).getTime() === e.getTime();
+                      const GAP = 20; // total px between two touching shifts
+                      const leftInset = touchesPrev ? GAP / 2 : 0;
+                      const rightInset = touchesNext ? GAP / 2 : 0;
+                      return (
+                        <div
+                          key={a.id}
+                          style={{
+                            ...styles.bar,
+                            left: `calc(${left}% + ${leftInset}px)`,
+                            width: `calc(${width}% - ${leftInset + rightInset}px)`,
+                            borderColor: color,
+                            background: positionTypeBarBg[type],
+                          }}
+                        >
+                          <div style={styles.barName}>
+                            {a.controllers?.name} {a.controllers?.rating}
+                            {studentName ? `${t('grid.studentLabel')}${studentName}` : ''}
+                          </div>
+                          <div style={styles.barTime}>
+                            {fmtUtc(s)}-{fmtUtc(e)}z
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             ))}
