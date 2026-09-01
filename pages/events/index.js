@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import Layout from '../../components/Layout';
+import TimeField from '../../components/TimeField';
 import { supabase } from '../../lib/supabaseClient';
 import { colors, shared, font, eventKindMeta, eventStatusMeta, formatDate, formatTimeZ } from '../../lib/theme';
 import { useLang } from '../../lib/i18n';
@@ -265,11 +266,11 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
             <input type="date" style={shared.input} value={form.event_date} onChange={set('event_date')} />
           </Field>
           <Field label={t('events.fieldStart')}>
-            <input type="time" style={shared.input} value={form.time_start} onChange={set('time_start')} />
+            <TimeField value={form.time_start} onChange={(v) => setForm((f) => ({ ...f, time_start: v }))} />
           </Field>
           {needsEnd && (
             <Field label={t('events.fieldEnd')}>
-              <input type="time" style={shared.input} value={form.time_end} onChange={set('time_end')} />
+              <TimeField value={form.time_end} onChange={(v) => setForm((f) => ({ ...f, time_end: v }))} />
             </Field>
           )}
         </div>

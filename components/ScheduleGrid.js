@@ -205,7 +205,11 @@ const styles = {
     top: 3,
     bottom: 3,
     borderRadius: 5,
-    border: '1px solid',
+    // Top/bottom border only — left/right borders on two adjacent bars sit
+    // only a few px apart and visually fuse into a solid colored line,
+    // hiding the background gap between shifts instead of showing it.
+    borderTop: '1px solid',
+    borderBottom: '1px solid',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
