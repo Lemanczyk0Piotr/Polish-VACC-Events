@@ -11,6 +11,9 @@ Zrobione:
 - Baza danych (Supabase/Postgres): tabele `controllers`, `positions`, `events`,
   `event_assignments`, RLS włączone (publiczny odczyt, zapis wyłącznie przez API).
 - Integracja z PL-VACC API (`/api/bookings`) — token ukryty po stronie serwera.
+- Eksport bookingów na CoreVACC (przycisk "EXPORT BOOKINGS" w scheduler evencie,
+  tryb admina) — dla każdej obsadzonej pozycji tworzy jeden booking na pełne
+  godziny eventu, właścicielem jest zawsze konto z `PLVACC_BOOKING_OWNER_NAME`.
 - **Layout**: nawigacja z linkami zewnętrznymi (PLVACC, ACC SECTORS, STATSIM, MyVATSIM).
 - **OPS Briefing** (`/`): najbliższe/ostatnie wydarzenie, odliczanie "TIME TO EVENT",
   statystyki (aktywni/zarejestrowani kontrolerzy, liczba wydarzeń), pasek boczny
@@ -69,6 +72,7 @@ bezpieczny do ujawnienia klucz `anon` Supabase.
 2. Skopiuj `.env.example` do `.env.local` i uzupełnij:
    ```
    PLVACC_API_TOKEN=twoj_token_plvacc
+   PLVACC_BOOKING_OWNER_NAME=Imie Nazwisko - CID
    SUPABASE_SECRET_KEY=twoj_klucz_service_role
    CRON_SECRET=dowolny_losowy_ciag_znakow
    ADMIN_PANEL_PASSWORD=dowolne_haslo_dla_adminow
@@ -89,8 +93,9 @@ wystarczy, ma wbudowane Cron Jobs):
 1. Wejdź na https://vercel.com, zaloguj się przez GitHub.
 2. **Add New → Project** → wybierz repozytorium `Polish-VACC-Events`.
 3. W ustawieniach projektu (Environment Variables) dodaj te same zmienne co
-   w `.env.local`: `PLVACC_API_TOKEN`, `SUPABASE_SECRET_KEY`, `CRON_SECRET`,
-   `ADMIN_PANEL_PASSWORD` (dokładnie te same wartości).
+   w `.env.local`: `PLVACC_API_TOKEN`, `PLVACC_BOOKING_OWNER_NAME`,
+   `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `ADMIN_PANEL_PASSWORD` (dokładnie te
+   same wartości).
 4. Deploy. Vercel sam wykryje `vercel.json` i skonfiguruje cron na
    `/api/cron/roster` (codziennie 22:00 UTC).
 
