@@ -77,7 +77,9 @@ export default function ScheduleGrid({ event, assignments }) {
     <div style={styles.wrap}>
       <div style={styles.axisRow}>
         <div style={styles.labelCol}>
-          <div style={styles.axisEventTitle}>{event.title}</div>
+          <div style={styles.axisEventTitle} title={event.title}>
+            {event.title}
+          </div>
           <div style={styles.axisEventTime}>
             {fmtUtc(axisStart)}-{fmtUtc(axisEnd)}z
           </div>
@@ -133,8 +135,8 @@ export default function ScheduleGrid({ event, assignments }) {
                           // background shows between back-to-back shifts —
                           // one color visibly ends, a gap of background
                           // color follows, then the next tile begins.
-                          left: `calc(${left}% + 3px)`,
-                          width: `calc(${width}% - 6px)`,
+                          left: `calc(${left}% + 4px)`,
+                          width: `calc(${width}% - 8px)`,
                           borderColor: color,
                           background: positionTypeBarBg[type],
                         }}
@@ -165,10 +167,13 @@ const styles = {
   labelCol: { width: 150, flexShrink: 0 },
   axisEventTitle: {
     fontWeight: 700,
-    fontSize: '0.9rem',
-    whiteSpace: 'nowrap',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
+    fontSize: '0.85rem',
+    lineHeight: 1.2,
+    // Wrap instead of truncating — the title used to get cut off with an
+    // ellipsis in this narrow column; wrapping to a couple of lines keeps
+    // the full name readable (also available as a title="" tooltip).
+    whiteSpace: 'normal',
+    overflowWrap: 'break-word',
   },
   axisEventTime: {
     fontSize: '0.78rem',
