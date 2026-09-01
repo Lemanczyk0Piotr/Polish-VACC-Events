@@ -155,9 +155,9 @@ export default function Home() {
 
                 <div style={styles.eyebrow}>{t('home.nextEvent')}</div>
                 {eventKindMeta[active.kind] && (
-                  <span style={styles.kindBadge(eventKindMeta[active.kind])}>
-                    {eventKindMeta[active.kind].label}
-                  </span>
+                  // Color-coded accent bar only — no label text, just the
+                  // kind's color as a visual cue (kept from the old badge).
+                  <span style={styles.kindAccentBar(eventKindMeta[active.kind])} />
                 )}
                 <h1 style={styles.title}>{active.title}</h1>
                 <p style={styles.dateLine}>
@@ -288,7 +288,7 @@ const styles = {
   },
   countdownBar: {
     display: 'flex',
-    alignItems: 'baseline',
+    alignItems: 'center',
     gap: 12,
     flexWrap: 'wrap',
     border: `1px solid ${colors.border}`,
@@ -309,16 +309,13 @@ const styles = {
     fontSize: '0.82rem',
     textDecoration: 'none',
   },
-  kindBadge: (meta) => ({
+  kindAccentBar: (meta) => ({
     display: 'inline-block',
+    width: 44,
+    height: 6,
+    borderRadius: 3,
+    background: meta.color,
     marginBottom: 12,
-    padding: '3px 10px',
-    borderRadius: 6,
-    background: meta.bg,
-    color: meta.color,
-    fontSize: '0.7rem',
-    fontWeight: 700,
-    letterSpacing: '0.05em',
   }),
   banner: {
     width: '100%',
@@ -337,8 +334,8 @@ const styles = {
   title: { fontSize: '1.9rem', margin: '0 0 8px', fontFamily: font.display, fontWeight: 700, letterSpacing: '-0.01em' },
   dateLine: { color: colors.muted, margin: '0 0 20px', fontFamily: 'monospace' },
   countdownLabel: {
-    fontSize: '0.75rem',
-    letterSpacing: '0.1em',
+    fontSize: '0.95rem',
+    letterSpacing: '0.08em',
     color: colors.amber,
     fontWeight: 700,
   },
