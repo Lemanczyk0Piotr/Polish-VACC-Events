@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '../../components/Layout';
 import ScheduleGrid from '../../components/ScheduleGrid';
+import TimeField from '../../components/TimeField';
 import { supabase } from '../../lib/supabaseClient';
 import { colors, shared, font, positionTypeColor, formatDate, formatTimeZ } from '../../lib/theme';
 import { useLang } from '../../lib/i18n';
@@ -433,9 +434,9 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
       )}
 
       <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
-        <input type="time" style={shared.input} value={start} onChange={(e) => setStart(e.target.value)} />
+        <TimeField value={start} onChange={setStart} />
         <span style={{ color: colors.mutedDim }}>–</span>
-        <input type="time" style={shared.input} value={end} onChange={(e) => setEnd(e.target.value)} />
+        <TimeField value={end} onChange={setEnd} />
         <span style={{ color: colors.mutedDim, fontSize: '0.7rem' }}>Z</span>
       </div>
 
@@ -459,47 +460,42 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
 // administratorów), bo to jedyna akcja dostępna dla zwykłych kontrolerów bez
 // logowania. Tożsamość to po prostu wybór własnego imienia z listy
 // (roadmap: prawdziwe konta to osobny, większy fundament na później).
-// Searchable position picker: a text filter above a native <select>, since
-// controllers on a big event have to hunt through 90+ callsigns otherwise.
-function PositionPicker({ positions, value, onChange, t }) {
-  const [search, setSearch] = useState('');
+// Searchable position picker: ONE text field with a native browser
+// autocomplete dropdown (via <datalist>) — type to filter, click/select a
+// suggestion to pick it. Replaces an earlier two-step "type in one box, then
+// pick in a select below" layout that was confusing to use.
+function PositionPicker({ positions, value, onPick, t, fieldId }) {
+  const selected = positions.find((p) => p.id === value);
+  const [text, setText] = useState(selected ? selected.callsign : '');
 
-  const positionsByType = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const g = {};
-    for (const type of TYPE_ORDER) g[type] = [];
-    for (const p of positions) {
-      if (!TYPE_ORDER.includes(p.type)) continue;
-      if (q && !p.callsign.toLowerCase().includes(q)) continue;
-      g[p.type].push(p);
-    }
-    return g;
-  }, [positions, search]);
+  const byCallsign = useMemo(() => {
+    const m = new Map();
+    for (const p of positions) m.set(p.callsign.trim().toUpperCase(), p.id);
+    return m;
+  }, [positions]);
+
+  const listId = `position-options-${fieldId}`;
 
   return (
     <>
       <input
         type="text"
-        style={{ ...shared.input, width: '100%', marginBottom: 6, fontSize: '0.85rem' }}
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder={t('signup.positionSearchPlaceholder')}
+        list={listId}
+        style={{ ...shared.input, width: '100%' }}
+        value={text}
+        placeholder={t('signup.anyPosition')}
+        onChange={(e) => {
+          const val = e.target.value;
+          setText(val);
+          const id = byCallsign.get(val.trim().toUpperCase());
+          onPick(id || '');
+        }}
       />
-      <select style={{ ...shared.input, width: '100%' }} value={value} onChange={onChange}>
-        <option value="">{t('signup.anyPosition')}</option>
-        {TYPE_ORDER.map(
-          (type) =>
-            positionsByType[type].length > 0 && (
-              <optgroup key={type} label={type}>
-                {positionsByType[type].map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.callsign}
-                  </option>
-                ))}
-              </optgroup>
-            )
-        )}
-      </select>
+      <datalist id={listId}>
+        {positions.map((p) => (
+          <option key={p.id} value={p.callsign} />
+        ))}
+      </datalist>
     </>
   );
 }
@@ -576,9 +572,9 @@ function SignupForm({ eventId, event, controllers, positions, onSaved }) {
         <div style={styles.fieldLabel}>{t('signup.hoursLabel')}</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('signup.hoursFrom')}</span>
-          <input type="time" style={shared.input} value={hoursStart} onChange={(e) => setHoursStart(e.target.value)} />
+          <TimeField value={hoursStart} onChange={setHoursStart} />
           <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('signup.hoursTo')}</span>
-          <input type="time" style={shared.input} value={hoursEnd} onChange={(e) => setHoursEnd(e.target.value)} />
+          <TimeField value={hoursEnd} onChange={setHoursEnd} />
           <span style={{ color: colors.mutedDim, fontSize: '0.7rem' }}>Z</span>
         </div>
       </div>
@@ -586,15 +582,15 @@ function SignupForm({ eventId, event, controllers, positions, onSaved }) {
       <div style={styles.signupChoicesRow}>
         <div>
           <div style={styles.fieldLabel}>{t('signup.choice', { n: 1 })}</div>
-          <PositionPicker positions={positions} value={choice1} onChange={(e) => setChoice1(e.target.value)} t={t} />
+          <PositionPicker positions={positions} value={choice1} onPick={setChoice1} t={t} fieldId="1" />
         </div>
         <div>
           <div style={styles.fieldLabel}>{t('signup.choice', { n: 2 })}</div>
-          <PositionPicker positions={positions} value={choice2} onChange={(e) => setChoice2(e.target.value)} t={t} />
+          <PositionPicker positions={positions} value={choice2} onPick={setChoice2} t={t} fieldId="2" />
         </div>
         <div>
           <div style={styles.fieldLabel}>{t('signup.choice', { n: 3 })}</div>
-          <PositionPicker positions={positions} value={choice3} onChange={(e) => setChoice3(e.target.value)} t={t} />
+          <PositionPicker positions={positions} value={choice3} onPick={setChoice3} t={t} fieldId="3" />
         </div>
       </div>
 
