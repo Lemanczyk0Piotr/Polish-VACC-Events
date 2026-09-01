@@ -279,6 +279,7 @@ export default function EventScheduler() {
 
       <SignupForm
         eventId={id}
+        event={event}
         controllers={controllers ? sortControllers(controllers) : []}
         positions={positions || []}
         onSaved={load}
@@ -286,106 +287,105 @@ export default function EventScheduler() {
 
       {isAdmin && <SignupsList signups={signups} />}
 
-      <div style={styles.controlsRow}>
-        <button
-          style={{ ...shared.btnGhost, ...(staffedOnly ? styles.toggleActive : {}) }}
-          onClick={() => setStaffedOnly((v) => !v)}
-        >
-          {staffedOnly ? t('scheduler.staffedOnlyActive') : t('scheduler.staffedOnly')}
-        </button>
-        <button
-          style={{ ...shared.btnPrimary, ...(showGrid ? {} : {}) }}
-          onClick={() => setShowGrid((v) => !v)}
-        >
-          {showGrid ? t('scheduler.hideGrid') : t('scheduler.showGrid')}
-        </button>
-        {isAdmin && (
-          <button style={shared.btnDanger} onClick={clearAll} disabled={!assignments || assignments.length === 0}>
-            {t('scheduler.clearAll')}
-          </button>
-        )}
-      </div>
+      {isAdmin && (
+        <>
+          <div style={styles.controlsRow}>
+            <button
+              style={{ ...shared.btnGhost, ...(staffedOnly ? styles.toggleActive : {}) }}
+              onClick={() => setStaffedOnly((v) => !v)}
+            >
+              {staffedOnly ? t('scheduler.staffedOnlyActive') : t('scheduler.staffedOnly')}
+            </button>
+            <button
+              style={{ ...shared.btnPrimary, ...(showGrid ? {} : {}) }}
+              onClick={() => setShowGrid((v) => !v)}
+            >
+              {showGrid ? t('scheduler.hideGrid') : t('scheduler.showGrid')}
+            </button>
+            <button style={shared.btnDanger} onClick={clearAll} disabled={!assignments || assignments.length === 0}>
+              {t('scheduler.clearAll')}
+            </button>
+          </div>
 
-      {showGrid && (
-        <div style={{ ...shared.card, marginBottom: 24, overflowX: 'auto' }}>
-          <ScheduleGrid event={event} assignments={assignments || []} />
-        </div>
-      )}
+          {showGrid && (
+            <div style={{ ...shared.card, marginBottom: 24, overflowX: 'auto' }}>
+              <ScheduleGrid event={event} assignments={assignments || []} />
+            </div>
+          )}
 
-      {TYPE_ORDER.map((type) => {
-        const list = grouped[type] || [];
-        if (list.length === 0) return null;
-        return (
-          <section key={type} style={{ marginBottom: 24 }}>
-            <div style={styles.typeHeader(positionTypeColor[type])}>{type}</div>
-            <div style={styles.posGrid}>
-              {list.map(({ position, assignments: posAssignments }) => {
-                // Chain default start time from the latest existing shift end.
-                const withTimes = posAssignments.filter((a) => a.time_start && a.time_end);
-                let defaultStartHHMM = event.time_start ? event.time_start.slice(0, 5) : '00:00';
-                if (withTimes.length > 0) {
-                  const latestEnd = withTimes.reduce(
-                    (max, a) => Math.max(max, new Date(a.time_end).getTime()),
-                    0
-                  );
-                  defaultStartHHMM = utcHHMM(new Date(latestEnd).toISOString());
-                }
-                const defaultEndHHMM = minToHHMM(toMin(defaultStartHHMM) + defaultDurationMin);
+          {TYPE_ORDER.map((type) => {
+            const list = grouped[type] || [];
+            if (list.length === 0) return null;
+            return (
+              <section key={type} style={{ marginBottom: 24 }}>
+                <div style={styles.typeHeader(positionTypeColor[type])}>{type}</div>
+                <div style={styles.posGrid}>
+                  {list.map(({ position, assignments: posAssignments }) => {
+                    // Chain default start time from the latest existing shift end.
+                    const withTimes = posAssignments.filter((a) => a.time_start && a.time_end);
+                    let defaultStartHHMM = event.time_start ? event.time_start.slice(0, 5) : '00:00';
+                    if (withTimes.length > 0) {
+                      const latestEnd = withTimes.reduce(
+                        (max, a) => Math.max(max, new Date(a.time_end).getTime()),
+                        0
+                      );
+                      defaultStartHHMM = utcHHMM(new Date(latestEnd).toISOString());
+                    }
+                    const defaultEndHHMM = minToHHMM(toMin(defaultStartHHMM) + defaultDurationMin);
 
-                return (
-                  <div key={position.id} style={shared.card}>
-                    <div style={styles.posHead}>
-                      <span style={{ fontWeight: 700 }}>{position.callsign}</span>
-                      {position.frequency && <span style={styles.freq}>{position.frequency}</span>}
-                    </div>
-                    {posAssignments.length === 0 && <div style={styles.gapLine}>{t('scheduler.empty')}</div>}
-                    {posAssignments.map((a) => (
-                      <div key={a.id} style={styles.assignedRow}>
-                        <div>
-                          <span style={{ color: colors.text, fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
-                          <span style={{ color: colors.blue, fontSize: '0.85rem' }}>{a.controllers?.rating}</span>
-                          {a.student?.name && (
-                            <span style={{ color: colors.purple, fontSize: '0.85rem' }}>{t('scheduler.studentLabel')}{a.student.name}</span>
-                          )}
-                          <div style={{ fontSize: '0.8rem', color: colors.mutedDim }}>
-                            {a.time_start && a.time_end
-                              ? `${utcHHMM(a.time_start)}-${utcHHMM(a.time_end)}z`
-                              : a.session_minutes
-                              ? `${a.session_minutes} min`
-                              : ''}
-                          </div>
+                    return (
+                      <div key={position.id} style={shared.card}>
+                        <div style={styles.posHead}>
+                          <span style={{ fontWeight: 700 }}>{position.callsign}</span>
+                          {position.frequency && <span style={styles.freq}>{position.frequency}</span>}
                         </div>
-                        {isAdmin && (
-                          <button style={styles.removeBtn} onClick={() => removeAssignment(a.id)}>
-                            ✕
+                        {posAssignments.length === 0 && <div style={styles.gapLine}>{t('scheduler.empty')}</div>}
+                        {posAssignments.map((a) => (
+                          <div key={a.id} style={styles.assignedRow}>
+                            <div>
+                              <span style={{ color: colors.text, fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
+                              <span style={{ color: colors.blue, fontSize: '0.85rem' }}>{a.controllers?.rating}</span>
+                              {a.student?.name && (
+                                <span style={{ color: colors.purple, fontSize: '0.85rem' }}>{t('scheduler.studentLabel')}{a.student.name}</span>
+                              )}
+                              <div style={{ fontSize: '0.8rem', color: colors.mutedDim }}>
+                                {a.time_start && a.time_end
+                                  ? `${utcHHMM(a.time_start)}-${utcHHMM(a.time_end)}z`
+                                  : a.session_minutes
+                                  ? `${a.session_minutes} min`
+                                  : ''}
+                              </div>
+                            </div>
+                            <button style={styles.removeBtn} onClick={() => removeAssignment(a.id)}>
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+
+                        {addingFor === position.id ? (
+                          <AddControllerForm
+                            controllers={controllers ? sortControllers(controllers) : []}
+                            defaultStart={defaultStartHHMM}
+                            defaultEnd={defaultEndHHMM}
+                            onCancel={() => setAddingFor(null)}
+                            onAdd={(controllerId, studentId, start, end) =>
+                              addAssignment(position.id, controllerId, studentId, start, end)
+                            }
+                          />
+                        ) : (
+                          <button style={styles.addBtn} onClick={() => setAddingFor(position.id)}>
+                            {t('scheduler.addController')}
                           </button>
                         )}
                       </div>
-                    ))}
-
-                    {isAdmin &&
-                      (addingFor === position.id ? (
-                        <AddControllerForm
-                          controllers={controllers ? sortControllers(controllers) : []}
-                          defaultStart={defaultStartHHMM}
-                          defaultEnd={defaultEndHHMM}
-                          onCancel={() => setAddingFor(null)}
-                          onAdd={(controllerId, studentId, start, end) =>
-                            addAssignment(position.id, controllerId, studentId, start, end)
-                          }
-                        />
-                      ) : (
-                        <button style={styles.addBtn} onClick={() => setAddingFor(position.id)}>
-                          {t('scheduler.addController')}
-                        </button>
-                      ))}
-                  </div>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })}
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </>
+      )}
     </Layout>
   );
 }
@@ -459,43 +459,63 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
 // administratorów), bo to jedyna akcja dostępna dla zwykłych kontrolerów bez
 // logowania. Tożsamość to po prostu wybór własnego imienia z listy
 // (roadmap: prawdziwe konta to osobny, większy fundament na później).
-function SignupForm({ eventId, controllers, positions, onSaved }) {
+// Searchable position picker: a text filter above a native <select>, since
+// controllers on a big event have to hunt through 90+ callsigns otherwise.
+function PositionPicker({ positions, value, onChange, t }) {
+  const [search, setSearch] = useState('');
+
+  const positionsByType = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const g = {};
+    for (const type of TYPE_ORDER) g[type] = [];
+    for (const p of positions) {
+      if (!TYPE_ORDER.includes(p.type)) continue;
+      if (q && !p.callsign.toLowerCase().includes(q)) continue;
+      g[p.type].push(p);
+    }
+    return g;
+  }, [positions, search]);
+
+  return (
+    <>
+      <input
+        type="text"
+        style={{ ...shared.input, width: '100%', marginBottom: 6, fontSize: '0.85rem' }}
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder={t('signup.positionSearchPlaceholder')}
+      />
+      <select style={{ ...shared.input, width: '100%' }} value={value} onChange={onChange}>
+        <option value="">{t('signup.anyPosition')}</option>
+        {TYPE_ORDER.map(
+          (type) =>
+            positionsByType[type].length > 0 && (
+              <optgroup key={type} label={type}>
+                {positionsByType[type].map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.callsign}
+                  </option>
+                ))}
+              </optgroup>
+            )
+        )}
+      </select>
+    </>
+  );
+}
+
+function SignupForm({ eventId, event, controllers, positions, onSaved }) {
   const { t } = useLang();
   const [controllerId, setControllerId] = useState('');
   const [choice1, setChoice1] = useState('');
   const [choice2, setChoice2] = useState('');
   const [choice3, setChoice3] = useState('');
+  const [hoursStart, setHoursStart] = useState(() => (event?.time_start ? event.time_start.slice(0, 5) : ''));
+  const [hoursEnd, setHoursEnd] = useState(() => (event?.time_end ? event.time_end.slice(0, 5) : ''));
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
   const [success, setSuccess] = useState(false);
-
-  const positionsByType = useMemo(() => {
-    const g = {};
-    for (const type of TYPE_ORDER) g[type] = [];
-    for (const p of positions) {
-      if (TYPE_ORDER.includes(p.type)) g[p.type].push(p);
-    }
-    return g;
-  }, [positions]);
-
-  const PositionOptions = () => (
-    <>
-      <option value="">{t('signup.anyPosition')}</option>
-      {TYPE_ORDER.map(
-        (type) =>
-          positionsByType[type].length > 0 && (
-            <optgroup key={type} label={type}>
-              {positionsByType[type].map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.callsign}
-                </option>
-              ))}
-            </optgroup>
-          )
-      )}
-    </>
-  );
 
   const submit = async (e) => {
     e.preventDefault();
@@ -514,7 +534,14 @@ function SignupForm({ eventId, controllers, positions, onSaved }) {
       const res = await fetch('/api/signups', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_id: eventId, controller_id: controllerId, choices, notes }),
+        body: JSON.stringify({
+          event_id: eventId,
+          controller_id: controllerId,
+          choices,
+          notes,
+          time_start: hoursStart || null,
+          time_end: hoursEnd || null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || t('signup.error'));
@@ -545,24 +572,29 @@ function SignupForm({ eventId, controllers, positions, onSaved }) {
         </select>
       </div>
 
+      <div style={{ marginBottom: 14 }}>
+        <div style={styles.fieldLabel}>{t('signup.hoursLabel')}</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('signup.hoursFrom')}</span>
+          <input type="time" style={shared.input} value={hoursStart} onChange={(e) => setHoursStart(e.target.value)} />
+          <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('signup.hoursTo')}</span>
+          <input type="time" style={shared.input} value={hoursEnd} onChange={(e) => setHoursEnd(e.target.value)} />
+          <span style={{ color: colors.mutedDim, fontSize: '0.7rem' }}>Z</span>
+        </div>
+      </div>
+
       <div style={styles.signupChoicesRow}>
         <div>
           <div style={styles.fieldLabel}>{t('signup.choice', { n: 1 })}</div>
-          <select style={{ ...shared.input, width: '100%' }} value={choice1} onChange={(e) => setChoice1(e.target.value)}>
-            <PositionOptions />
-          </select>
+          <PositionPicker positions={positions} value={choice1} onChange={(e) => setChoice1(e.target.value)} t={t} />
         </div>
         <div>
           <div style={styles.fieldLabel}>{t('signup.choice', { n: 2 })}</div>
-          <select style={{ ...shared.input, width: '100%' }} value={choice2} onChange={(e) => setChoice2(e.target.value)}>
-            <PositionOptions />
-          </select>
+          <PositionPicker positions={positions} value={choice2} onChange={(e) => setChoice2(e.target.value)} t={t} />
         </div>
         <div>
           <div style={styles.fieldLabel}>{t('signup.choice', { n: 3 })}</div>
-          <select style={{ ...shared.input, width: '100%' }} value={choice3} onChange={(e) => setChoice3(e.target.value)}>
-            <PositionOptions />
-          </select>
+          <PositionPicker positions={positions} value={choice3} onChange={(e) => setChoice3(e.target.value)} t={t} />
         </div>
       </div>
 
@@ -572,7 +604,6 @@ function SignupForm({ eventId, controllers, positions, onSaved }) {
           style={{ ...shared.input, minHeight: 60, width: '100%', resize: 'vertical' }}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder={t('signup.notesPlaceholder')}
         />
       </div>
 
@@ -608,6 +639,12 @@ function SignupsList({ signups }) {
               <span style={{ color: colors.blue }}>
                 {s.preferred_position?.callsign || t('signup.anyPosition')}
               </span>
+              {s.preferred_time_start && s.preferred_time_end && (
+                <span style={{ color: colors.mutedDim, fontFamily: 'monospace' }}>
+                  {' '}
+                  · {s.preferred_time_start.slice(0, 5)}-{s.preferred_time_end.slice(0, 5)}z
+                </span>
+              )}
               {s.notes && <span style={{ color: colors.mutedDim }}> · {s.notes}</span>}
             </div>
           ))}

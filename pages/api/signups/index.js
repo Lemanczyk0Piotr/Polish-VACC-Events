@@ -9,7 +9,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { event_id, controller_id, choices, notes } = req.body || {};
+  const { event_id, controller_id, choices, notes, time_start, time_end } = req.body || {};
 
   if (!event_id || !controller_id || !Array.isArray(choices) || choices.length === 0) {
     return res
@@ -25,6 +25,10 @@ export default async function handler(req, res) {
       preferred_position_id: c.position_id || null,
       priority: Number(c.priority),
       notes: notes ? String(notes).trim() || null : null,
+      // Same preferred hours applied to every priority row of this signup —
+      // it's one availability window per controller per event, not per pick.
+      preferred_time_start: time_start ? `${time_start}:00` : null,
+      preferred_time_end: time_end ? `${time_end}:00` : null,
       status: 'pending',
     }));
 

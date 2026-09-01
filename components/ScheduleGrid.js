@@ -129,15 +129,13 @@ export default function ScheduleGrid({ event, assignments }) {
                         key={a.id}
                         style={{
                           ...styles.bar,
-                          left: `${left}%`,
-                          // -2px (instead of the previous +1px overlap) leaves a
-                          // small visible gap between back-to-back shifts on the
-                          // same position — the old overlap hid the seam
-                          // entirely, making adjacent controllers' shifts blend
-                          // into one solid bar with no visible boundary.
-                          width: `calc(${width}% - 2px)`,
+                          // Inset both edges so a strip of the track's own
+                          // background shows between back-to-back shifts —
+                          // one color visibly ends, a gap of background
+                          // color follows, then the next tile begins.
+                          left: `calc(${left}% + 3px)`,
+                          width: `calc(${width}% - 6px)`,
                           borderColor: color,
-                          borderWidth: 2,
                           background: positionTypeBarBg[type],
                         }}
                       >

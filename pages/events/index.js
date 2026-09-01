@@ -78,7 +78,9 @@ export default function Events() {
       <div style={styles.headerRow}>
         <div>
           <h1 style={shared.h1}>{t('events.title')}</h1>
-          <p style={shared.sub}>{events ? t('events.count', { n: events.length }) : t('events.loading')}</p>
+          <p style={shared.sub}>
+            {!events ? t('events.loading') : isAdmin ? t('events.count', { n: events.length }) : ''}
+          </p>
         </div>
         {isAdmin && (
           <div style={styles.createBtns}>
