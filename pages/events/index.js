@@ -16,6 +16,7 @@ const EMPTY_FORM = {
   status: 'draft',
   category: '',
   notes: '',
+  short_description: '',
   image_url: '',
   external_link: '',
 };
@@ -160,6 +161,7 @@ export default function Events() {
                   {ev.time_start ? ` · ${formatTimeZ(ev.time_start)}` : ''}
                   {ev.time_end ? `–${formatTimeZ(ev.time_end)}` : ''}
                 </div>
+                {ev.short_description && <div style={styles.cardShort}>{ev.short_description}</div>}
                 {ev.notes && <div style={styles.cardNotes}>{ev.notes}</div>}
               </div>
               <div style={styles.cardActions}>
@@ -228,6 +230,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
           status: initial.status || 'draft',
           category: initial.category || '',
           notes: initial.notes || '',
+          short_description: initial.short_description || '',
           image_url: initial.image_url || '',
           external_link: initial.external_link || '',
         }
@@ -256,6 +259,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
       status: form.status,
       category: form.category || null,
       notes: form.notes || null,
+      short_description: form.short_description || null,
       image_url: form.image_url || null,
       external_link: form.external_link || null,
     };
@@ -343,6 +347,15 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
           <input style={shared.input} value={form.external_link} onChange={set('external_link')} placeholder="https://…" />
         </Field>
 
+        <Field label={t('events.fieldShortDescription')}>
+          <textarea
+            style={{ ...shared.input, minHeight: 54, resize: 'vertical' }}
+            value={form.short_description}
+            onChange={set('short_description')}
+            placeholder={t('events.shortDescriptionPlaceholder')}
+          />
+        </Field>
+
         <Field label={t('events.fieldNotes')}>
           <textarea style={{ ...shared.input, minHeight: 80, resize: 'vertical' }} value={form.notes} onChange={set('notes')} />
         </Field>
@@ -426,6 +439,13 @@ const styles = {
   // szerokość karty i przy 5 akcjach zawijały się nierówno. `stretch` daje im
   // wspólną szerokość, więc kolumna wygląda jak lista akcji, a nie jak
   // przypadkowe klocki.
+  cardShort: {
+    color: colors.text,
+    fontSize: '0.95rem',
+    fontWeight: 600,
+    marginTop: 6,
+    lineHeight: 1.45,
+  },
   cardActions: {
     display: 'flex',
     flexDirection: 'column',

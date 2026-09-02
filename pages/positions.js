@@ -3,17 +3,24 @@ import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
 import { colors, shared } from '../lib/theme';
 import { useLang } from '../lib/i18n';
+import { useAdminMode, adminFetch } from '../lib/adminMode';
 
 const TYPES = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
 export default function Positions() {
   const { t } = useLang();
+  const { isAdmin, password } = useAdminMode();
   const [positions, setPositions] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
+  // 'ALL' | 'VISIBLE' | 'HIDDEN' — filtr widoczności przy rozpisywaniu obsady.
+  // Ta strona to katalog WSZYSTKICH pozycji ATC, więc domyślnie pokazuje
+  // wszystko, także ukryte.
+  const [visFilter, setVisFilter] = useState('ALL');
+  const [busyId, setBusyId] = useState(null);
 
-  useEffect(() => {
+  const load = () => {
     supabase
       .from('positions')
       .select('*')
@@ -22,13 +29,38 @@ export default function Positions() {
         if (error) setError(error.message);
         else setPositions(data);
       });
-  }, []);
+  };
+
+  useEffect(load, []);
+
+  const toggleVisible = async (p) => {
+    setBusyId(p.id);
+    try {
+      const res = await adminFetch(password, `/api/positions/${p.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visible: p.visible === false }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data.error || t('positions.toggleFailed'));
+        return;
+      }
+      load();
+    } catch (e) {
+      alert(t('positions.toggleFailed'));
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     if (!positions) return [];
     const q = search.trim().toLowerCase();
     return positions.filter((p) => {
       if (typeFilter !== 'ALL' && p.type !== typeFilter) return false;
+      if (visFilter === 'VISIBLE' && p.visible === false) return false;
+      if (visFilter === 'HIDDEN' && p.visible !== false) return false;
       if (!q) return true;
       return (
         p.callsign.toLowerCase().includes(q) ||
@@ -36,7 +68,7 @@ export default function Positions() {
         (p.frequency || '').toLowerCase().includes(q)
       );
     });
-  }, [positions, search, typeFilter]);
+  }, [positions, search, typeFilter, visFilter]);
 
   const grouped = useMemo(() => {
     const g = {};
@@ -79,6 +111,17 @@ export default function Positions() {
             </button>
           ))}
         </div>
+        <div style={{ ...styles.filterRow, marginTop: 8 }}>
+          {['ALL', 'VISIBLE', 'HIDDEN'].map((key) => (
+            <button
+              key={key}
+              onClick={() => setVisFilter(key)}
+              style={{ ...styles.filterBtn, ...(visFilter === key ? styles.filterBtnActive : {}) }}
+            >
+              {t(`positions.vis${key}`)}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && <p style={{ color: colors.red }}>{error}</p>}
@@ -91,12 +134,26 @@ export default function Positions() {
           </div>
           <div style={styles.grid}>
             {grouped[type].map((p) => (
-              <div key={p.id} style={styles.card}>
+              <div key={p.id} style={{ ...styles.card, ...(p.visible === false ? styles.cardHidden : {}) }}>
                 <div style={styles.cardTop}>
                   <span style={styles.callsign}>{p.callsign}</span>
                   {p.frequency && <span style={styles.freq}>{p.frequency}</span>}
                 </div>
                 {p.name && <div style={styles.posName}>{p.name}</div>}
+                <div style={styles.cardBottom}>
+                  <span style={p.visible === false ? styles.hiddenTag : styles.visibleTag}>
+                    {p.visible === false ? t('positions.hiddenBadge') : t('positions.visibleBadge')}
+                  </span>
+                  {isAdmin && (
+                    <button
+                      style={styles.visBtn}
+                      onClick={() => toggleVisible(p)}
+                      disabled={busyId === p.id}
+                    >
+                      {p.visible === false ? t('positions.showBtn') : t('positions.hideBtn')}
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -151,6 +208,22 @@ const styles = {
     gap: 12,
   },
   card: shared.card,
+  // Ukryta pozycja zostaje na liście (to katalog wszystkich pozycji), ale jest
+  // wyraźnie przygaszona.
+  cardHidden: { opacity: 0.55, borderStyle: 'dashed' },
+  cardBottom: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginTop: 10 },
+  visibleTag: { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em', color: colors.green },
+  hiddenTag: { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.04em', color: colors.mutedDim },
+  visBtn: {
+    padding: '5px 10px',
+    borderRadius: 6,
+    border: `1px solid ${colors.border}`,
+    background: 'transparent',
+    color: colors.muted,
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
   cardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' },
   callsign: { fontWeight: 700, fontSize: '1rem' },
   freq: { color: colors.blue, fontSize: '0.95rem', fontFamily: 'monospace' },

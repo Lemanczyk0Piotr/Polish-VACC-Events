@@ -1,6 +1,6 @@
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireAdmin } from '../../../lib/adminAuth';
-import { configuredTargets, siteUrl } from '../../../lib/discord';
+import { configuredTargets, configuredRoles, siteUrl } from '../../../lib/discord';
 
 // Diagnostyka integracji dla panelu /discord: które kanały mają webhook,
 // czy ustawiony jest ping roli i adres strony (linki w embedach), oraz
@@ -27,6 +27,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       targets: configuredTargets(),
+      roles: configuredRoles(),
       site_url: siteUrl(),
       role_ping: Boolean((process.env.DISCORD_ROLE_ID || '').trim()),
       cron_secret: Boolean(process.env.CRON_SECRET),

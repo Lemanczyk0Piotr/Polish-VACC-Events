@@ -27,6 +27,7 @@ const KIND_LABELS = {
   monthly_summary: 'Podsumowanie miesiąca',
   period_summary: 'Podsumowanie okresu',
   scheduled_post: 'Zaplanowany materiał',
+  manual_reminder: 'Przypomnienie (ręczne)',
 };
 
 function kindLabel(kind) {
@@ -60,6 +61,7 @@ export default function DiscordPanel() {
   const [busy, setBusy] = useState(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [reminderOpen, setReminderOpen] = useState(false);
 
   const load = () => {
     if (!password) return;
@@ -247,6 +249,9 @@ export default function DiscordPanel() {
               >
                 {t('discord.summaryBtn')}
               </button>
+              <button style={shared.btnGhost} onClick={() => setReminderOpen(true)}>
+                {t('discord.reminderBtn')}
+              </button>
             </div>
           </>
         )}
@@ -342,6 +347,18 @@ export default function DiscordPanel() {
         )}
       </div>
 
+      {reminderOpen && (
+        <ReminderModal
+          events={upcoming}
+          roles={status?.roles || []}
+          onClose={() => setReminderOpen(false)}
+          onSend={async (payload) => {
+            setReminderOpen(false);
+            await send('reminder', { type: 'reminder_ping', ...payload });
+          }}
+        />
+      )}
+
       {modalOpen && (
         <MaterialModal
           initial={editing}
@@ -354,6 +371,87 @@ export default function DiscordPanel() {
         />
       )}
     </Layout>
+  );
+}
+
+// Ręczne przypomnienie: wybór wydarzenia, ról do pingnięcia i opcjonalnego
+// tekstu. Role biorą się z listy zwróconej przez /api/discord/status — jeśli
+// dana zmienna środowiskowa nie jest ustawiona, rola pojawia się jako
+// niedostępna, zamiast po cichu nie pingnąć nikogo.
+function ReminderModal({ events, roles, onClose, onSend }) {
+  const { t } = useLang();
+  const [eventId, setEventId] = useState(events[0]?.id || '');
+  const [text, setText] = useState('');
+  const [picked, setPicked] = useState(() =>
+    roles.filter((r) => r.isDefault && r.configured).map((r) => r.key)
+  );
+
+  const toggle = (key) =>
+    setPicked((list) => (list.includes(key) ? list.filter((k) => k !== key) : [...list, key]));
+
+  return (
+    <div style={shared.modalOverlay} onClick={onClose}>
+      <div style={shared.modal} onClick={(e) => e.stopPropagation()}>
+        <div style={{ ...styles.sectionTitle, marginBottom: 16 }}>{t('discord.reminderTitle')}</div>
+
+        <label style={styles.label}>{t('discord.reminderEvent')}</label>
+        <select style={{ ...shared.input, width: '100%' }} value={eventId} onChange={(e) => setEventId(e.target.value)}>
+          {events.length === 0 && <option value="">{t('discord.reminderNoEvents')}</option>}
+          {events.map((ev) => (
+            <option key={ev.id} value={ev.id}>
+              {ev.event_date} · {ev.title}
+            </option>
+          ))}
+        </select>
+
+        <label style={styles.label}>{t('discord.reminderRoles')}</label>
+        <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
+          {roles.map((r) => (
+            <label
+              key={r.key}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                cursor: r.configured ? 'pointer' : 'not-allowed',
+                opacity: r.configured ? 1 : 0.45,
+              }}
+              title={r.configured ? '' : t('discord.reminderRoleMissing')}
+            >
+              <input
+                type="checkbox"
+                checked={picked.includes(r.key)}
+                disabled={!r.configured}
+                onChange={() => toggle(r.key)}
+              />
+              <span>{r.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <label style={styles.label}>{t('discord.reminderText')}</label>
+        <textarea
+          style={{ ...shared.input, width: '100%', minHeight: 90, fontFamily: 'inherit' }}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={t('discord.reminderTextPlaceholder')}
+        />
+
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 20 }}>
+          <button type="button" style={shared.btnGhost} onClick={onClose}>
+            {t('discord.cancel')}
+          </button>
+          <button
+            type="button"
+            style={shared.btnPrimary}
+            disabled={!eventId}
+            onClick={() => onSend({ event_id: eventId, roles: picked, text })}
+          >
+            {t('discord.reminderSend')}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

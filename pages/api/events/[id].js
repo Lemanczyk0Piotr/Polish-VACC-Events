@@ -13,6 +13,7 @@ const EDITABLE_FIELDS = [
   'status',
   'image_url',
   'notes',
+  'short_description',
   'external_link',
   'schedule_remarks',
 ];

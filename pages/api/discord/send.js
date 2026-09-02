@@ -8,6 +8,7 @@ import {
   sendSchedule,
   sendMonthlySummary,
   sendPeriodSummary,
+  sendManualReminder,
 } from '../../../lib/discordDispatch';
 
 // Ręczna wysyłka z panelu administratora — te same funkcje, których używa
@@ -44,6 +45,8 @@ export default async function handler(req, res) {
     from,
     to,
     only_completed,
+    roles,
+    text,
   } = req.body || {};
   const supabase = getSupabaseAdmin();
 
@@ -59,7 +62,7 @@ export default async function handler(req, res) {
               description:
                 'Jeśli widzisz tę wiadomość, webhook dla tego kanału jest poprawnie skonfigurowany.',
               color: 0xd32f2f,
-              footer: { text: 'Polish VACC · test' },
+              footer: { text: 'Polish VACC · TEST' },
               timestamp: new Date().toISOString(),
             },
           ],
@@ -94,6 +97,14 @@ export default async function handler(req, res) {
         result = await sendSchedule(supabase, event_id, {
           force,
           imageBase64: image_base64 ? String(image_base64).replace(/^data:[^,]+,/, '') : null,
+        });
+        break;
+      case 'reminder_ping':
+        if (!event_id) return res.status(400).json({ error: 'Brak event_id.' });
+        result = await sendManualReminder(supabase, {
+          eventId: event_id,
+          roleKeys: Array.isArray(roles) ? roles : ['controllers'],
+          text: typeof text === 'string' ? text : '',
         });
         break;
       case 'period':

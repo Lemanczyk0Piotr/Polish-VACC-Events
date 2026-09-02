@@ -106,6 +106,11 @@ export default function EventScheduler() {
     for (const p of positions) {
       if (!TYPE_ORDER.includes(p.type)) continue;
       const list = byPos[p.id] || [];
+      // Pozycja ukryta (positions.visible = false) nie pojawia się przy
+      // rozpisywaniu obsady. Wyjątek: jeśli ktoś już na niej siedzi (bo
+      // ukryto ją PO rozpisaniu), zostaje widoczna — inaczej nie dałoby się
+      // tego przypisania zobaczyć ani usunąć.
+      if (p.visible === false && list.length === 0) continue;
       if (staffedOnly && list.length === 0) continue;
       g[p.type].push({ position: p, assignments: list });
     }
@@ -184,6 +189,20 @@ export default function EventScheduler() {
     const res = await adminFetch(password, `/api/assignments/${assignmentId}`, { method: 'DELETE' });
     if (res.ok) load();
     else alert(t('scheduler.removeFailed'));
+  };
+
+  // Wypisanie kontrolera z eventu — kasuje wszystkie wiersze jego zgłoszenia
+  // (do 3 preferencji), nie pojedynczy wiersz.
+  const removeSignup = async (entry) => {
+    const who = entry.controller?.name || entry.controller?.cid || '';
+    if (!confirm(t('signup.removeConfirm', { name: who }))) return;
+    const res = await adminFetch(
+      password,
+      `/api/signups?event_id=${id}&controller_id=${entry.controllerId}`,
+      { method: 'DELETE' }
+    );
+    if (res.ok) load();
+    else alert(t('signup.removeFailed'));
   };
 
   const clearAll = async () => {
@@ -332,6 +351,7 @@ export default function EventScheduler() {
             {event.time_start ? ` · ${formatTimeZ(event.time_start)}` : ''}
             {event.time_end ? `–${formatTimeZ(event.time_end)}` : ''}
           </p>
+          {event.short_description && <p style={styles.shortDescription}>{event.short_description}</p>}
           {isAdmin ? (
             <>
               <div style={styles.fieldLabel}>{t('scheduler.notes')}</div>
@@ -386,16 +406,18 @@ export default function EventScheduler() {
           {t('signup.closedCompleted')}
         </div>
       ) : (
+        // Ukryte pozycje (visible = false) nie są do wzięcia, więc nie ma sensu
+        // proponować ich w preferencjach zapisu.
         <SignupForm
           eventId={id}
           event={event}
           controllers={controllers ? sortControllers(controllers) : []}
-          positions={positions || []}
+          positions={(positions || []).filter((p) => p.visible !== false)}
           onSaved={load}
         />
       )}
 
-      {isAdmin && <SignupsList signups={signups} />}
+      {isAdmin && <SignupsList signups={signups} isAdmin={isAdmin} onDelete={removeSignup} />}
 
       {isAdmin && (
         <>
@@ -774,30 +796,70 @@ function SignupForm({ eventId, event, controllers, positions, onSaved }) {
 // Admin-only podgląd zgłoszeń — surowa lista, żeby admin miał czym się
 // kierować przy ręcznym przypisywaniu kontrolerów w sekcjach poniżej
 // (automatyczne dopasowanie to kolejny etap, patrz claude/feature-roadmap.md).
-function SignupsList({ signups }) {
+function SignupsList({ signups, isAdmin, onDelete }) {
   const { t } = useLang();
   if (!signups) return null;
+
+  // Jedno zgłoszenie kontrolera to do 3 wierszy (priority 1-3). Grupujemy je
+  // z powrotem po kontrolerze, żeby lista czytała się jak zgłoszenia, a nie
+  // jak wiersze w bazie — i żeby „usuń" kasowało całe zgłoszenie naraz.
+  const byController = [];
+  const index = new Map();
+  for (const s of signups) {
+    const key = s.controller_id || s.controllers?.cid || s.id;
+    if (!index.has(key)) {
+      index.set(key, {
+        key,
+        controllerId: s.controller_id,
+        controller: s.controllers,
+        notes: s.notes,
+        from: s.preferred_time_start,
+        to: s.preferred_time_end,
+        picks: [],
+      });
+      byController.push(index.get(key));
+    }
+    const entry = index.get(key);
+    entry.picks.push(s);
+    if (!entry.notes && s.notes) entry.notes = s.notes;
+  }
+  for (const entry of byController) entry.picks.sort((a, b) => (a.priority || 0) - (b.priority || 0));
+
   return (
     <div style={{ ...shared.card, marginBottom: 20 }}>
       <div style={{ ...styles.fieldLabel, fontSize: '0.95rem', marginBottom: 10 }}>{t('signup.adminListTitle')}</div>
-      {signups.length === 0 ? (
+      {byController.length === 0 ? (
         <p style={{ color: colors.mutedDim, fontSize: '0.85rem', margin: 0 }}>{t('signup.noSignups')}</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {signups.map((s) => (
-            <div key={s.id} style={{ fontSize: '0.88rem', color: colors.text }}>
-              <span style={{ fontWeight: 700 }}>{s.controllers?.name}</span>{' '}
-              <span style={{ color: colors.mutedDim }}>{t('signup.priorityShort', { n: s.priority })}</span>{' '}
-              <span style={{ color: colors.blue }}>
-                {s.preferred_position?.callsign || t('signup.anyPosition')}
-              </span>
-              {s.preferred_time_start && s.preferred_time_end && (
-                <span style={{ color: colors.mutedDim, fontFamily: 'monospace' }}>
-                  {' '}
-                  · {s.preferred_time_start.slice(0, 5)}-{s.preferred_time_end.slice(0, 5)}z
-                </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {byController.map((entry) => (
+            <div key={entry.key} style={styles.signupRow}>
+              <div style={{ flex: 1, minWidth: 0, fontSize: '0.88rem', color: colors.text }}>
+                <span style={{ fontWeight: 700 }}>{entry.controller?.name || entry.controller?.cid || '—'}</span>{' '}
+                {entry.picks.map((s) => (
+                  <span key={s.id}>
+                    <span style={{ color: colors.mutedDim }}>{t('signup.priorityShort', { n: s.priority })}</span>{' '}
+                    <span style={{ color: colors.blue }}>
+                      {s.preferred_position?.callsign || t('signup.anyPosition')}
+                    </span>{' '}
+                  </span>
+                ))}
+                {entry.from && entry.to && (
+                  <span style={{ color: colors.mutedDim, fontFamily: 'monospace' }}>
+                    · {entry.from.slice(0, 5)}-{entry.to.slice(0, 5)}z
+                  </span>
+                )}
+                {entry.notes && <span style={{ color: colors.mutedDim }}> · {entry.notes}</span>}
+              </div>
+              {isAdmin && entry.controllerId && (
+                <button
+                  style={styles.signupRemoveBtn}
+                  onClick={() => onDelete(entry)}
+                  title={t('signup.removeSignup')}
+                >
+                  {t('signup.removeSignup')}
+                </button>
               )}
-              {s.notes && <span style={{ color: colors.mutedDim }}> · {s.notes}</span>}
             </div>
           ))}
         </div>
@@ -845,6 +907,32 @@ const styles = {
   summaryGroup: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' },
   controlsRow: { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
   toggleActive: { borderColor: colors.amber, color: colors.amber },
+  signupRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 10,
+    padding: '6px 8px',
+    borderRadius: 8,
+    background: colors.cardAlt,
+  },
+  signupRemoveBtn: {
+    flexShrink: 0,
+    padding: '6px 12px',
+    borderRadius: 7,
+    border: `1px solid ${colors.red}`,
+    background: colors.redBg,
+    color: colors.red,
+    fontWeight: 700,
+    fontSize: '0.78rem',
+    cursor: 'pointer',
+  },
+  shortDescription: {
+    color: colors.text,
+    fontSize: '1rem',
+    fontWeight: 600,
+    lineHeight: 1.5,
+    margin: '0 0 16px',
+  },
   remarksLabel: { display: 'block', fontSize: '0.8rem', color: colors.muted, fontWeight: 700, margin: '4px 0 8px' },
   remarksHint: { fontSize: '0.78rem', color: colors.mutedDim, marginTop: 8, lineHeight: 1.5 },
   // Blurple Discorda — ten sam kolor przycisku co na liście wydarzeń.

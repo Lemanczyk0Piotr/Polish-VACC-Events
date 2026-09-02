@@ -21,6 +21,7 @@ export default async function handler(req, res) {
     status,
     image_url,
     notes,
+    short_description,
     external_link,
   } = req.body || {};
 
@@ -38,6 +39,7 @@ export default async function handler(req, res) {
     status: ALLOWED_STATUS.includes(status) ? status : 'draft',
     image_url: image_url || null,
     notes: notes || null,
+    short_description: short_description || null,
     external_link: external_link || null,
   };
 
