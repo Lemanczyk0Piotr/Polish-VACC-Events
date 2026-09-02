@@ -15,6 +15,14 @@ import {
 //
 // force=true pomija sprawdzenie duplikatu — do użycia, gdy admin świadomie
 // chce wysłać coś drugi raz (np. po poprawieniu opisu eventu).
+//
+// Domyślny limit ciała żądania w Next.js to 1 MB — za mało, gdy w środku
+// jedzie PNG rozpiski zakodowany base64 (event z wieloma pozycjami potrafi
+// dać kilka MB). Discord i tak przyjmie plik do 25 MB, ale 8 MB z zapasem
+// wystarczy na każdy realny harmonogram.
+export const config = {
+  api: { bodyParser: { sizeLimit: '8mb' } },
+};
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
@@ -22,7 +30,7 @@ export default async function handler(req, res) {
   }
   if (!requireAdmin(req, res)) return;
 
-  const { type, event_id, days = 1, year, month, target = 'events', force = false } = req.body || {};
+  const { type, event_id, days = 1, year, month, target = 'events', force = false, image_base64 } = req.body || {};
   const supabase = getSupabaseAdmin();
 
   try {
@@ -57,7 +65,13 @@ export default async function handler(req, res) {
         break;
       case 'schedule':
         if (!event_id) return res.status(400).json({ error: 'Brak event_id.' });
-        result = await sendSchedule(supabase, event_id, { force });
+        // image_base64 przychodzi ze strony eventu — to wykres Gantta
+        // narysowany w przeglądarce (lib/scheduleImage.js). Może być podany
+        // jako czysty base64 albo jako data URL; obcinamy ewentualny prefiks.
+        result = await sendSchedule(supabase, event_id, {
+          force,
+          imageBase64: image_base64 ? String(image_base64).replace(/^data:[^,]+,/, '') : null,
+        });
         break;
       case 'summary': {
         const now = new Date();

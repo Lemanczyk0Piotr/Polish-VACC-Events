@@ -7,6 +7,7 @@ import { supabase } from '../../lib/supabaseClient';
 import { colors, shared, font, positionTypeColor, formatDate, formatTimeZ } from '../../lib/theme';
 import { useLang } from '../../lib/i18n';
 import { useAdminMode, adminFetch } from '../../lib/adminMode';
+import { renderScheduleImage } from '../../lib/scheduleImage';
 
 const TYPE_ORDER = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -196,10 +197,21 @@ export default function EventScheduler() {
     if (!force && !confirm(t('scheduler.sendScheduleConfirm'))) return;
     setSendingSchedule(true);
     try {
+      // Wykres Gantta rysowany jest tu, w przeglądarce, z tych samych danych
+      // co podgląd na stronie — niezależnie od tego, czy admin ma go akurat
+      // rozwiniętego przyciskiem "GENERUJ HARMONOGRAM". Jeśli się nie da
+      // (event bez godzin albo żadna zmiana nie ma ustawionych godzin),
+      // rozpiska i tak pójdzie, tyle że samym tekstem.
+      let image = null;
+      try {
+        image = renderScheduleImage(event, assignments || []);
+      } catch (imgErr) {
+        image = null;
+      }
       const res = await adminFetch(password, '/api/discord/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'schedule', event_id: id, force }),
+        body: JSON.stringify({ type: 'schedule', event_id: id, force, image_base64: image }),
       });
       const data = await res.json();
       if (data?.skipped) {
