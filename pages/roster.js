@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { colors, shared, RATING_RANK, endorsementBadges } from '../lib/theme';
 import { useLang } from '../lib/i18n';
 import { useAdminMode, adminFetch } from '../lib/adminMode';
+import { controllerName } from '../lib/identity';
 
 const ENDORSEMENT_OPTIONS = ['PE', 'S2-CE', 'S3-CE', 'C1-CE'];
 
@@ -147,7 +148,10 @@ export default function Roster() {
             {filteredSorted.map((c) => (
               <tr key={c.id} style={{ ...styles.tr, opacity: c.status === 'inactive' ? 0.5 : 1 }}>
                 <td style={styles.td}>
-                  {c.name}
+                  {/* Bez trybu administratora kolumna NAME pokazuje CID —
+                      zakładka jest wprawdzie ukryta w nawigacji, ale adres
+                      /roster nadal da się otworzyć wprost. */}
+                  {controllerName(c, isAdmin)}
                   {c.is_mentor && <span style={shared.badge(colors.blue, colors.blueBg)}>{t('roster.mentorBadge')}</span>}
                 </td>
                 <td style={styles.td}>{c.cid || '—'}</td>

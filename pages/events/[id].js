@@ -8,6 +8,7 @@ import { colors, shared, font, positionTypeColor, formatDate, formatTimeZ } from
 import { useLang } from '../../lib/i18n';
 import { useAdminMode, adminFetch } from '../../lib/adminMode';
 import { renderScheduleImage } from '../../lib/scheduleImage';
+import { controllerName } from '../../lib/identity';
 
 const TYPE_ORDER = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -76,7 +77,7 @@ export default function EventScheduler() {
     supabase
       .from('event_assignments')
       .select(
-        '*, controllers:controllers!event_assignments_controller_id_fkey(id, name, rating, is_mentor, discord_id), student:controllers!event_assignments_student_id_fkey(id, name, rating), positions(callsign, type, frequency)'
+        '*, controllers:controllers!event_assignments_controller_id_fkey(id, name, cid, rating, is_mentor, discord_id), student:controllers!event_assignments_student_id_fkey(id, name, cid, rating), positions(callsign, type, frequency)'
       )
       .eq('event_id', id)
       .then(({ data, error }) => {
@@ -85,7 +86,7 @@ export default function EventScheduler() {
       });
     supabase
       .from('signup_requests')
-      .select('*, controllers(name, rating), preferred_position:positions(callsign, type)')
+      .select('*, controllers(name, cid, rating), preferred_position:positions(callsign, type)')
       .eq('event_id', id)
       .order('created_at', { ascending: true })
       .then(({ data }) => setSignups(data || []));
@@ -363,8 +364,8 @@ export default function EventScheduler() {
                 <span style={{ color: positionTypeColor[type], fontWeight: 700, fontSize: '0.82rem' }}>{type}</span>
                 {list.map((a) => (
                   <span key={a.id} style={{ color: colors.text, fontSize: '0.88rem' }}>
-                    {a.controllers?.name} ({a.controllers?.rating})
-                    {a.student?.name ? `${t('scheduler.studentLabel')}${a.student.name}` : ''}
+                    {controllerName(a.controllers, isAdmin)} ({a.controllers?.rating})
+                    {a.student ? `${t('scheduler.studentLabel')}${controllerName(a.student, isAdmin)}` : ''}
                   </span>
                 ))}
               </div>
@@ -376,13 +377,23 @@ export default function EventScheduler() {
         </div>
       </div>
 
-      <SignupForm
-        eventId={id}
-        event={event}
-        controllers={controllers ? sortControllers(controllers) : []}
-        positions={positions || []}
-        onSaved={load}
-      />
+      {/* Na zakończone wydarzenie nie da się już zapisać — zamiast formularza
+          pokazujemy krótką informację. To samo sprawdza serwer w
+          /api/signups, więc nie da się tego obejść wysyłając żądanie
+          bezpośrednio. */}
+      {event.status === 'completed' ? (
+        <div style={{ ...shared.card, marginBottom: 20, color: colors.mutedDim }}>
+          {t('signup.closedCompleted')}
+        </div>
+      ) : (
+        <SignupForm
+          eventId={id}
+          event={event}
+          controllers={controllers ? sortControllers(controllers) : []}
+          positions={positions || []}
+          onSaved={load}
+        />
+      )}
 
       {isAdmin && <SignupsList signups={signups} />}
 
@@ -644,6 +655,9 @@ function PositionPicker({ positions, value, onPick, t, fieldId }) {
 
 function SignupForm({ eventId, event, controllers, positions, onSaved }) {
   const { t } = useLang();
+  // Bez trybu administratora lista "wybierz siebie" pokazuje CID-y, nie
+  // nazwiska — ta sama reguła co wszędzie indziej w aplikacji.
+  const { isAdmin } = useAdminMode();
   const [controllerId, setControllerId] = useState('');
   const [choice1, setChoice1] = useState('');
   const [choice2, setChoice2] = useState('');
@@ -704,7 +718,7 @@ function SignupForm({ eventId, event, controllers, positions, onSaved }) {
           <option value="">{t('signup.selectName')}</option>
           {controllers.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name} {c.rating ? `(${c.rating})` : ''}
+              {controllerName(c, isAdmin)} {c.rating ? `(${c.rating})` : ''}
             </option>
           ))}
         </select>

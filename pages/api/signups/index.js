@@ -38,6 +38,19 @@ export default async function handler(req, res) {
 
   try {
     const supabase = getSupabaseAdmin();
+
+    // Zapisy na zakończone wydarzenie są zamknięte. UI w ogóle nie pokazuje
+    // wtedy formularza, ale ten endpoint jest publiczny (bez hasła admina),
+    // więc sprawdzenie musi być też tutaj.
+    const { data: event, error: eventErr } = await supabase
+      .from('events')
+      .select('status')
+      .eq('id', event_id)
+      .single();
+    if (eventErr) throw eventErr;
+    if (event?.status === 'completed') {
+      return res.status(409).json({ error: 'To wydarzenie już się odbyło — zapisy są zamknięte.' });
+    }
     // Upsert po (event_id, controller_id, priority) — jeśli kontroler zmieni
     // zdanie i wyśle formularz ponownie, aktualizuje swoje wcześniejsze
     // zgłoszenie zamiast tworzyć duplikat.

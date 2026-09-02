@@ -6,16 +6,23 @@ import StatBars from '../../../components/StatBars';
 import { supabase } from '../../../lib/supabaseClient';
 import { colors, shared, font, positionTypeColor, eventKindMeta, eventStatusMeta, formatDate, formatTimeZ } from '../../../lib/theme';
 import { useLang } from '../../../lib/i18n';
+import { useAdminMode } from '../../../lib/adminMode';
 import { aggregateStats, shiftsByPosition, fmtDuration, controllerLabel } from '../../../lib/statsAggregate';
 
 // Statystyki pojedynczego eventu — kto gdzie siedział, ile, jak wyglądała
 // obsada i ilu zapisanych kontrolerów faktycznie dostało pozycję.
-// Strona jest publiczna (jak Top Controllers), a kontrolerzy podpisani są
-// „Imię Nazwisko · CID" — tak poprosił user.
+//
+// Strona jest publiczna (jak Top Controllers), ale podpisy kontrolerów zależą
+// od trybu administratora: admin widzi „Imię Nazwisko · CID", a bez
+// zalogowania widać WYŁĄCZNIE CID — ta sama granica prywatności co na
+// /top-controllers.
 export default function EventStats() {
   const router = useRouter();
   const { id } = router.query;
   const { lang, t } = useLang();
+  // Nazwiska tylko dla administratora — bez zalogowania widać sam CID,
+  // dokładnie jak na /top-controllers.
+  const { isAdmin } = useAdminMode();
 
   const [event, setEvent] = useState(null);
   const [assignments, setAssignments] = useState(null);
@@ -138,10 +145,10 @@ export default function EventStats() {
           <StatBars
             items={stats.controllers.slice(0, 12).map((c) => ({
               key: c.id,
-              label: controllerLabel(c),
+              label: controllerLabel(c, isAdmin),
               sub: `${c.rating || '—'} · ${c.positions.join(', ') || '—'}`,
               value: c.minutes,
-              title: `${controllerLabel(c)} — ${fmtDuration(c.minutes)}, ${c.shifts} zmian`,
+              title: `${controllerLabel(c, isAdmin)} — ${fmtDuration(c.minutes)}, ${c.shifts} zmian`,
             }))}
             formatValue={fmtDuration}
             emptyText={t('stats.noData')}
@@ -169,8 +176,8 @@ export default function EventStats() {
                       {it.from}–{it.to}z
                     </span>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      {controllerLabel(it.controller)}
-                      {it.student ? ` ${t('stats.studentLabel')} ${controllerLabel(it.student)}` : ''}
+                      {controllerLabel(it.controller, isAdmin)}
+                      {it.student ? ` ${t('stats.studentLabel')} ${controllerLabel(it.student, isAdmin)}` : ''}
                     </span>
                     <span style={{ color: colors.mutedDim, fontFamily: font.mono, fontSize: '0.78rem' }}>
                       {fmtDuration(it.minutes)}
@@ -192,7 +199,7 @@ export default function EventStats() {
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             {signupSummary.unassigned.map((c) => (
               <span key={c.id} style={styles.chip}>
-                {controllerLabel(c)}
+                {controllerLabel(c, isAdmin)}
               </span>
             ))}
           </div>

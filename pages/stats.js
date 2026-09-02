@@ -9,9 +9,9 @@ import { useAdminMode, adminFetch } from '../lib/adminMode';
 import { aggregateStats, fmtDuration, controllerLabel } from '../lib/statsAggregate';
 
 // Podsumowanie dowolnego okresu: jakie były eventy, kto gdzie i ile
-// kontrolował, które pozycje pracowały najdłużej. Publiczne (kontrolerzy
-// podpisani „Imię Nazwisko · CID"), z admin-only przyciskiem wysyłki na
-// Discorda.
+// kontrolował, które pozycje pracowały najdłużej. Strona publiczna, ale
+// nazwiska widzi tylko administrator — bez zalogowania ranking pokazuje same
+// CID-y (jak /top-controllers). Przycisk wysyłki na Discorda: admin-only.
 
 function isoDate(d) {
   return d.toISOString().slice(0, 10);
@@ -183,7 +183,7 @@ export default function PeriodStats() {
               <StatBars
                 items={stats.controllers.slice(0, 15).map((c) => ({
                   key: c.id,
-                  label: controllerLabel(c),
+                  label: controllerLabel(c, isAdmin),
                   sub: t('stats.controllerSub', { rating: c.rating || '—', events: c.eventCount, shifts: c.shifts }),
                   value: c.minutes,
                 }))}
