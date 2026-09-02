@@ -96,13 +96,77 @@ wystarczy, ma wbudowane Cron Jobs):
    w `.env.local`: `PLVACC_API_TOKEN`, `PLVACC_BOOKING_OWNER_NAME`,
    `SUPABASE_SECRET_KEY`, `CRON_SECRET`, `ADMIN_PANEL_PASSWORD` (dokładnie te
    same wartości).
-4. Deploy. Vercel sam wykryje `vercel.json` i skonfiguruje cron na
-   `/api/cron/roster` (codziennie 22:00 UTC).
+   Dla Discorda dochodzą jeszcze `DISCORD_WEBHOOK_URL`, `DISCORD_ROLE_ID` i
+   `NEXT_PUBLIC_SITE_URL` (patrz sekcja „Integracja z Discordem").
+4. Deploy. Vercel sam wykryje `vercel.json` i skonfiguruje dwa crony:
+   `/api/cron/roster` (codziennie 22:00 UTC) i `/api/cron/discord`
+   (codziennie 18:00 UTC).
 
 Uwaga: 22:00 UTC to ok. północ czasu polskiego latem (CEST, UTC+2) i 23:00
 zimą (CET, UTC+1) — przez zmianę czasu raz w roku synchronizacja "ucieknie"
 o godzinę. Można to poprawić ręczną korektą `vercel.json` dwa razy do roku,
 albo zaakceptować to niewielkie przesunięcie.
+
+## Integracja z Discordem
+
+Aplikacja sama wysyła na Discorda ogłoszenia eventów, przypomnienia,
+przypomnienia o zapisach, gotowe rozpiski obsady, zaplanowane materiały
+(opis + zdjęcie) i miesięczne podsumowanie Top Controllers.
+
+**Nie ma osobnego procesu bota.** Wszystko idzie **webhookami** — zwykłym
+POST-em HTTP z `pages/api/**` — a rytm wysyłek nadaje cron
+(`/api/cron/discord`). Dzięki temu integracja mieści się w tym samym
+projekcie na Vercelu i nic dodatkowego nie trzeba hostować. Prawdziwy bot
+(discord.js, stałe połączenie z bramą Discorda) byłby potrzebny dopiero do
+slash-komend, przycisków pod wiadomością i prywatnych DM-ów — patrz
+`claude/feature-roadmap.md`.
+
+### Konfiguracja (5 minut)
+
+1. Na serwerze Discord: ustawienia kanału → **Integracje → Webhooki → Nowy
+   webhook** → *Kopiuj URL webhooka*. Wklej go jako `DISCORD_WEBHOOK_URL`
+   (jeden webhook wystarczy na start; osobne kanały można rozdzielić
+   zmiennymi `DISCORD_WEBHOOK_EVENTS/SCHEDULE/MATERIALS/SUMMARY`).
+2. Chcesz pingi? Włącz tryb dewelopera w Discordzie, prawy klik na rolę
+   kontrolerów → *Kopiuj ID roli* → `DISCORD_ROLE_ID`.
+3. Ustaw `NEXT_PUBLIC_SITE_URL` na adres tej strony — z tego budowane są
+   linki „Zapisy / szczegóły" w wiadomościach.
+4. Wszystkie zmienne (z opisami i wartościami domyślnymi) są w
+   `.env.example`.
+
+### Co i kiedy leci automatycznie
+
+| Kiedy | Co |
+| --- | --- |
+| 5 dni przed eventem | przypomnienie o **zapisach** (+ licznik zgłoszeń) |
+| 2 dni i 1 dzień przed | **przypomnienie o evencie** z pingiem roli |
+| 1 dzień przed | **rozpiska obsady** (pozycje + zmiany + kontrolerzy) |
+| o wyznaczonej godzinie | **materiały** z kolejki (panel `/discord`) |
+| 1. dnia miesiąca | **Top Controllers** za miesiąc poprzedni |
+| po opublikowaniu eventu | **ogłoszenie** — ręcznie przyciskiem `DISCORD`, albo automatycznie przy `DISCORD_AUTO_ANNOUNCE=1` |
+
+Wszystkie te reguły da się przestawić zmiennymi (`DISCORD_REMINDER_DAYS`,
+`DISCORD_SIGNUP_REMINDER_DAYS`, `DISCORD_SCHEDULE_DAYS_BEFORE`,
+`DISCORD_REMINDER_HOUR`).
+
+Każda wysyłka zapisuje się w tabeli `discord_posts` pod unikalnym kluczem
+`(kind, ref_key)` — **nic nie poleci dwa razy**, nawet jeśli cron odpali się
+sto razy dziennie albo admin wyśle coś ręcznie tuż przed automatem.
+
+### Dokładność godzinowa materiałów
+
+Plan **Hobby** na Vercelu odpala crony **raz na dobę**, więc `vercel.json`
+ustawia `/api/cron/discord` na 18:00 UTC — przypomnienia, rozpiski i
+podsumowania działają wtedy bez zarzutu, ale materiał zaplanowany „na 12:00"
+pójdzie dopiero o 18:00. Dwa sposoby na dokładność godzinową:
+
+- plan **Pro** → zmień w `vercel.json` na `"schedule": "0 * * * *"`,
+- albo darmowy zewnętrzny pinger (np. cron-job.org) uderzający co godzinę w
+  `https://twoja-domena/api/cron/discord?secret=<CRON_SECRET>`.
+
+Panel `/discord` (tryb admina) pokazuje status webhooków, reguły automatu,
+kolejkę materiałów i dziennik ostatnich wysyłek, ma przyciski testowe oraz
+„URUCHOM AUTOMAT TERAZ".
 
 ## Bezpieczeństwo sekretów
 
@@ -120,6 +184,15 @@ albo zaakceptować to niewielkie przesunięcie.
   to jedyna zapisowa akcja dostępna dla zwykłych kontrolerów.
 - `/api/cron/roster` jest chroniony `CRON_SECRET` — Vercel dokłada nagłówek
   autoryzacyjny automatycznie przy zaplanowanych wywołaniach.
+- `/api/cron/discord` przyjmuje ten sam `CRON_SECRET` (nagłówek `Authorization`
+  **albo** `?secret=` w adresie, żeby dało się użyć zewnętrznego pingera) lub
+  hasło administratora — inaczej odpowiada 401.
+- **URL webhooka Discorda to sekret** — kto go zna, może pisać na kanał jako
+  bot. Dlatego `/api/discord/status` zwraca do przeglądarki wyłącznie
+  informację „ustawiony / nieustawiony", nigdy sam adres.
+- Tabele `discord_posts` i `scheduled_posts` mają włączone RLS **bez polityk
+  publicznych** — czyta i pisze do nich wyłącznie serwer kluczem
+  `service_role`, klucz `anon` nie zobaczy tam nic.
 
 ## Cel projektu
 

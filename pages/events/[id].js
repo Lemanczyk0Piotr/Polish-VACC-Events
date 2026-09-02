@@ -52,6 +52,7 @@ export default function EventScheduler() {
   const [notesDraft, setNotesDraft] = useState('');
   const [showGrid, setShowGrid] = useState(false);
   const [exportingBookings, setExportingBookings] = useState(false);
+  const [sendingSchedule, setSendingSchedule] = useState(false);
 
   const load = () => {
     if (!id) return;
@@ -186,6 +187,38 @@ export default function EventScheduler() {
     const res = await adminFetch(password, `/api/assignments?event_id=${id}`, { method: 'DELETE' });
     if (res.ok) load();
     else alert(t('scheduler.clearFailed'));
+  };
+
+  // Publikacja gotowej rozpiski obsady na Discordzie. Ta sama funkcja, której
+  // używa automat na 24h przed eventem (lib/discordDispatch.js) — więc jeśli
+  // admin wyśle ją ręcznie wcześniej, automat już jej nie powtórzy.
+  const sendScheduleToDiscord = async (force = false) => {
+    if (!force && !confirm(t('scheduler.sendScheduleConfirm'))) return;
+    setSendingSchedule(true);
+    try {
+      const res = await adminFetch(password, '/api/discord/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'schedule', event_id: id, force }),
+      });
+      const data = await res.json();
+      if (data?.skipped) {
+        if (confirm(t('scheduler.sendScheduleAgain'))) {
+          setSendingSchedule(false);
+          return sendScheduleToDiscord(true);
+        }
+        return;
+      }
+      if (!res.ok) {
+        alert(`${t('scheduler.sendScheduleFailed')}\n${data.error || ''}`);
+        return;
+      }
+      alert(t('scheduler.sendScheduleOk'));
+    } catch (e) {
+      alert(t('scheduler.sendScheduleFailed'));
+    } finally {
+      setSendingSchedule(false);
+    }
   };
 
   const exportBookings = async () => {
@@ -346,6 +379,13 @@ export default function EventScheduler() {
               disabled={exportingBookings || !assignments || assignments.length === 0}
             >
               {exportingBookings ? t('scheduler.exportBookingsBusy') : t('scheduler.exportBookings')}
+            </button>
+            <button
+              style={styles.discordBtn}
+              onClick={() => sendScheduleToDiscord()}
+              disabled={sendingSchedule || !assignments || assignments.length === 0}
+            >
+              {sendingSchedule ? t('scheduler.sendScheduleBusy') : t('scheduler.sendSchedule')}
             </button>
           </div>
 
@@ -730,6 +770,14 @@ const styles = {
   summaryGroup: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' },
   controlsRow: { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
   toggleActive: { borderColor: colors.amber, color: colors.amber },
+  // Blurple Discorda — ten sam kolor przycisku co na liście wydarzeń.
+  discordBtn: {
+    ...shared.btnGhost,
+    border: '1px solid #5865F2',
+    background: 'rgba(88, 101, 242, 0.12)',
+    color: '#4752C4',
+    fontWeight: 700,
+  },
   typeHeader: (color) => ({
     fontWeight: 700,
     fontSize: '0.98rem',

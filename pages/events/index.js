@@ -29,6 +29,7 @@ export default function Events() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [defaultKind, setDefaultKind] = useState('event');
+  const [discordBusyId, setDiscordBusyId] = useState(null);
 
   const load = () => {
     supabase
@@ -65,6 +66,40 @@ export default function Events() {
     setEditing(ev);
     setDefaultKind(ev.kind);
     setModalOpen(true);
+  };
+
+  // Ręczne ogłoszenie wydarzenia na Discordzie. Backend prowadzi dziennik
+  // wysyłek (discord_posts), więc drugie kliknięcie nie wyśle duplikatu —
+  // zamiast tego odpowiada "skipped", a my dopiero wtedy pytamy admina, czy
+  // na pewno chce ogłosić to samo wydarzenie ponownie (np. po poprawieniu
+  // opisu) i powtarzamy żądanie z force=true.
+  const announceOnDiscord = async (ev, force = false) => {
+    if (!force && !confirm(t('events.discordConfirm', { title: ev.title }))) return;
+    setDiscordBusyId(ev.id);
+    try {
+      const res = await adminFetch(password, '/api/discord/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'announce', event_id: ev.id, force }),
+      });
+      const data = await res.json();
+      if (data?.skipped) {
+        if (confirm(t('events.discordAgain'))) {
+          setDiscordBusyId(null);
+          return announceOnDiscord(ev, true);
+        }
+        return;
+      }
+      if (!res.ok) {
+        alert(`${t('events.discordFailed')}\n${data.error || ''}`);
+        return;
+      }
+      alert(t('events.discordOk'));
+    } catch (e) {
+      alert(t('events.discordFailed'));
+    } finally {
+      setDiscordBusyId(null);
+    }
   };
 
   const handleDelete = async (ev) => {
@@ -135,6 +170,13 @@ export default function Events() {
                 )}
                 {isAdmin && (
                   <>
+                    <button
+                      style={styles.discordBtn}
+                      onClick={() => announceOnDiscord(ev)}
+                      disabled={discordBusyId === ev.id}
+                    >
+                      {discordBusyId === ev.id ? t('events.discordBusy') : t('events.discordBtn')}
+                    </button>
                     <button style={styles.editBtn} onClick={() => openEdit(ev)}>
                       {t('events.edit')}
                     </button>
@@ -385,6 +427,19 @@ const styles = {
     fontWeight: 700,
     fontSize: '1rem',
     textDecoration: 'none',
+  },
+  // Kolor Discorda (blurple #5865F2) — od razu widać, że przycisk wychodzi
+  // poza aplikację, a nie edytuje wydarzenie.
+  discordBtn: {
+    padding: '13px 20px',
+    borderRadius: 9,
+    border: '1px solid #5865F2',
+    background: 'rgba(88, 101, 242, 0.12)',
+    color: '#4752C4',
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    letterSpacing: '0.02em',
+    cursor: 'pointer',
   },
   editBtn: {
     padding: '13px 20px',
