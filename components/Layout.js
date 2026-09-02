@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { href: '/roster', key: 'nav.roster', adminOnly: true },
   { href: '/positions', key: 'nav.positions', adminOnly: true },
   { href: '/top-controllers', key: 'nav.topControllers' },
+  { href: '/stats', key: 'nav.stats' },
   { href: '/discord', key: 'nav.discord', adminOnly: true },
 ];
 

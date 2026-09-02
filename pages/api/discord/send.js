@@ -7,6 +7,7 @@ import {
   remindSignups,
   sendSchedule,
   sendMonthlySummary,
+  sendPeriodSummary,
 } from '../../../lib/discordDispatch';
 
 // Ręczna wysyłka z panelu administratora — te same funkcje, których używa
@@ -40,6 +41,9 @@ export default async function handler(req, res) {
     force = false,
     image_base64,
     remarks,
+    from,
+    to,
+    only_completed,
   } = req.body || {};
   const supabase = getSupabaseAdmin();
 
@@ -90,6 +94,14 @@ export default async function handler(req, res) {
         result = await sendSchedule(supabase, event_id, {
           force,
           imageBase64: image_base64 ? String(image_base64).replace(/^data:[^,]+,/, '') : null,
+        });
+        break;
+      case 'period':
+        result = await sendPeriodSummary(supabase, {
+          from,
+          to,
+          onlyCompleted: only_completed !== false,
+          force,
         });
         break;
       case 'summary': {

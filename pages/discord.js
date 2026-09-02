@@ -23,8 +23,9 @@ const KIND_LABELS = {
   event_announce: 'Ogłoszenie eventu',
   event_reminder_d1: 'Przypomnienie (1 dzień)',
   event_reminder_d2: 'Przypomnienie (2 dni)',
-  event_schedule: 'Rozpiska obsady',
+  event_schedule: 'Rozpiska',
   monthly_summary: 'Podsumowanie miesiąca',
+  period_summary: 'Podsumowanie okresu',
   scheduled_post: 'Zaplanowany materiał',
 };
 

@@ -164,9 +164,14 @@ export default function Events() {
               </div>
               <div style={styles.cardActions}>
                 {ev.kind === 'event' && (
-                  <Link href={`/events/${ev.id}`} style={styles.scheduleBtn}>
-                    {t('events.signups')}
-                  </Link>
+                  <>
+                    <Link href={`/events/${ev.id}`} style={styles.scheduleBtn}>
+                      {t('events.signups')}
+                    </Link>
+                    <Link href={`/events/${ev.id}/stats`} style={styles.statsBtn}>
+                      {t('events.stats')}
+                    </Link>
+                  </>
                 )}
                 {isAdmin && (
                   <>
@@ -417,8 +422,21 @@ const styles = {
   cardTitle: { fontSize: '1.3rem', fontWeight: 700, marginBottom: 4, fontFamily: font.display },
   cardDate: { fontSize: '0.9rem', color: colors.muted, fontFamily: 'monospace' },
   cardNotes: { fontSize: '0.9rem', color: colors.mutedDim, marginTop: 6, maxWidth: 560 },
-  cardActions: { display: 'flex', gap: 8, flexShrink: 0, marginLeft: 'auto' },
+  // Przyciski jedna pod drugą (user, 2026-09-02) — w poziomie zjadały
+  // szerokość karty i przy 5 akcjach zawijały się nierówno. `stretch` daje im
+  // wspólną szerokość, więc kolumna wygląda jak lista akcji, a nie jak
+  // przypadkowe klocki.
+  cardActions: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'stretch',
+    gap: 8,
+    flexShrink: 0,
+    marginLeft: 'auto',
+    minWidth: 170,
+  },
   scheduleBtn: {
+    textAlign: 'center',
     padding: '14px 24px',
     borderRadius: 9,
     border: `1px solid ${colors.amber}`,
@@ -426,6 +444,18 @@ const styles = {
     color: colors.amber,
     fontWeight: 700,
     fontSize: '1rem',
+    textDecoration: 'none',
+  },
+  statsBtn: {
+    textAlign: 'center',
+    padding: '13px 20px',
+    borderRadius: 9,
+    border: `1px solid ${colors.border}`,
+    background: colors.cardAlt,
+    color: colors.text,
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    letterSpacing: '0.02em',
     textDecoration: 'none',
   },
   // Kolor Discorda (blurple #5865F2) — od razu widać, że przycisk wychodzi
