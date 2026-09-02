@@ -54,6 +54,8 @@ export default function EventScheduler() {
   const [showGrid, setShowGrid] = useState(false);
   const [exportingBookings, setExportingBookings] = useState(false);
   const [sendingSchedule, setSendingSchedule] = useState(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [remarksDraft, setRemarksDraft] = useState('');
 
   const load = () => {
     if (!id) return;
@@ -74,7 +76,7 @@ export default function EventScheduler() {
     supabase
       .from('event_assignments')
       .select(
-        '*, controllers:controllers!event_assignments_controller_id_fkey(id, name, rating, is_mentor), student:controllers!event_assignments_student_id_fkey(id, name, rating), positions(callsign, type, frequency)'
+        '*, controllers:controllers!event_assignments_controller_id_fkey(id, name, rating, is_mentor, discord_id), student:controllers!event_assignments_student_id_fkey(id, name, rating), positions(callsign, type, frequency)'
       )
       .eq('event_id', id)
       .then(({ data, error }) => {
@@ -193,8 +195,24 @@ export default function EventScheduler() {
   // Publikacja gotowej rozpiski obsady na Discordzie. Ta sama funkcja, której
   // używa automat na 24h przed eventem (lib/discordDispatch.js) — więc jeśli
   // admin wyśle ją ręcznie wcześniej, automat już jej nie powtórzy.
-  const sendScheduleToDiscord = async (force = false) => {
-    if (!force && !confirm(t('scheduler.sendScheduleConfirm'))) return;
+  // Ilu kontrolerów z tej rozpiski zostanie oznaczonych imiennie — do
+  // pokazania w oknie wysyłki, żeby admin od razu widział, komu brakuje
+  // wpisanego ID Discorda w Rosterze.
+  const mentionStats = useMemo(() => {
+    const seen = new Map();
+    for (const a of assignments || []) {
+      if (a.controllers?.id) seen.set(a.controllers.id, Boolean(a.controllers.discord_id));
+    }
+    return { total: seen.size, withId: Array.from(seen.values()).filter(Boolean).length };
+  }, [assignments]);
+
+  const openScheduleModal = () => {
+    setRemarksDraft(event?.schedule_remarks || '');
+    setScheduleModalOpen(true);
+  };
+
+  const sendScheduleToDiscord = async (force = false, remarks = remarksDraft) => {
+    setScheduleModalOpen(false);
     setSendingSchedule(true);
     try {
       // Wykres Gantta rysowany jest tu, w przeglądarce, z tych samych danych
@@ -204,20 +222,20 @@ export default function EventScheduler() {
       // rozpiska i tak pójdzie, tyle że samym tekstem.
       let image = null;
       try {
-        image = renderScheduleImage(event, assignments || []);
+        image = renderScheduleImage(event, assignments || [], remarks);
       } catch (imgErr) {
         image = null;
       }
       const res = await adminFetch(password, '/api/discord/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'schedule', event_id: id, force, image_base64: image }),
+        body: JSON.stringify({ type: 'schedule', event_id: id, force, image_base64: image, remarks }),
       });
       const data = await res.json();
       if (data?.skipped) {
         if (confirm(t('scheduler.sendScheduleAgain'))) {
           setSendingSchedule(false);
-          return sendScheduleToDiscord(true);
+          return sendScheduleToDiscord(true, remarks);
         }
         return;
       }
@@ -226,6 +244,7 @@ export default function EventScheduler() {
         return;
       }
       alert(t('scheduler.sendScheduleOk'));
+      load();
     } catch (e) {
       alert(t('scheduler.sendScheduleFailed'));
     } finally {
@@ -394,12 +413,42 @@ export default function EventScheduler() {
             </button>
             <button
               style={styles.discordBtn}
-              onClick={() => sendScheduleToDiscord()}
+              onClick={openScheduleModal}
               disabled={sendingSchedule || !assignments || assignments.length === 0}
             >
               {sendingSchedule ? t('scheduler.sendScheduleBusy') : t('scheduler.sendSchedule')}
             </button>
           </div>
+
+          {scheduleModalOpen && (
+            <div style={shared.modalOverlay} onClick={() => setScheduleModalOpen(false)}>
+              <div style={shared.modal} onClick={(e) => e.stopPropagation()}>
+                <h2 style={shared.h1}>{t('scheduler.remarksTitle')}</h2>
+                <p style={shared.sub}>{event?.title}</p>
+
+                <label style={styles.remarksLabel}>{t('scheduler.remarksLabel')}</label>
+                <textarea
+                  style={{ ...shared.input, width: '100%', minHeight: 120, fontFamily: 'inherit' }}
+                  value={remarksDraft}
+                  onChange={(e) => setRemarksDraft(e.target.value)}
+                  placeholder={t('scheduler.remarksPlaceholder')}
+                />
+                <div style={styles.remarksHint}>{t('scheduler.remarksHint')}</div>
+                <div style={styles.remarksHint}>
+                  {t('scheduler.remarksMentionInfo', { n: mentionStats.withId, total: mentionStats.total })}
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+                  <button type="button" style={shared.btnGhost} onClick={() => setScheduleModalOpen(false)}>
+                    {t('scheduler.remarksCancel')}
+                  </button>
+                  <button type="button" style={shared.btnPrimary} onClick={() => sendScheduleToDiscord(false)}>
+                    {t('scheduler.remarksSend')}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {showGrid && (
             <div style={{ ...shared.card, marginBottom: 24, overflowX: 'auto' }}>
@@ -782,6 +831,8 @@ const styles = {
   summaryGroup: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' },
   controlsRow: { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
   toggleActive: { borderColor: colors.amber, color: colors.amber },
+  remarksLabel: { display: 'block', fontSize: '0.8rem', color: colors.muted, fontWeight: 700, margin: '4px 0 8px' },
+  remarksHint: { fontSize: '0.78rem', color: colors.mutedDim, marginTop: 8, lineHeight: 1.5 },
   // Blurple Discorda — ten sam kolor przycisku co na liście wydarzeń.
   discordBtn: {
     ...shared.btnGhost,

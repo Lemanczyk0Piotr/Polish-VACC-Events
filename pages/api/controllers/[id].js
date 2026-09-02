@@ -1,7 +1,7 @@
 import { getSupabaseAdmin } from '../../../lib/supabaseAdmin';
 import { requireAdmin } from '../../../lib/adminAuth';
 
-const EDITABLE_FIELDS = ['name', 'cid', 'rating', 'status', 'is_mentor', 'endorsements'];
+const EDITABLE_FIELDS = ['name', 'cid', 'rating', 'status', 'is_mentor', 'endorsements', 'discord_id'];
 const ALLOWED_STATUS = ['active', 'visitor', 'inactive'];
 
 export default async function handler(req, res) {
@@ -20,6 +20,13 @@ export default async function handler(req, res) {
     if (key in body) update[key] = body[key];
   }
   if (update.status && !ALLOWED_STATUS.includes(update.status)) delete update.status;
+  // ID Discorda to snowflake (17-20 cyfr). Przyjmujemy też wklejone "<@123…>"
+  // albo id ze spacjami — zostawiamy same cyfry, puste pole zapisujemy jako
+  // NULL (czyli "ten kontroler nie jest oznaczany imiennie").
+  if ('discord_id' in update) {
+    const digits = String(update.discord_id ?? '').replace(/\D/g, '');
+    update.discord_id = digits.length >= 15 ? digits : null;
+  }
   if (update.endorsements && !Array.isArray(update.endorsements)) delete update.endorsements;
   update.updated_at = new Date().toISOString();
 

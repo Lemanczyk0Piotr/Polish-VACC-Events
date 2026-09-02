@@ -206,6 +206,7 @@ function EditControllerModal({ controller, onClose, onSaved }) {
   const [status, setStatus] = useState(controller.status || 'active');
   const [isMentor, setIsMentor] = useState(!!controller.is_mentor);
   const [endorsements, setEndorsements] = useState(controller.endorsements || []);
+  const [discordId, setDiscordId] = useState(controller.discord_id || '');
   const [saving, setSaving] = useState(false);
 
   const toggleEndorsement = (tag) =>
@@ -218,7 +219,7 @@ function EditControllerModal({ controller, onClose, onSaved }) {
       const res = await adminFetch(password, `/api/controllers/${controller.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status, is_mentor: isMentor, endorsements }),
+        body: JSON.stringify({ status, is_mentor: isMentor, endorsements, discord_id: discordId }),
       });
       if (!res.ok) throw new Error(t('roster.saveError'));
       onSaved();
@@ -260,6 +261,19 @@ function EditControllerModal({ controller, onClose, onSaved }) {
                 <span>{tag}</span>
               </label>
             ))}
+          </div>
+        </div>
+
+        <div style={{ marginTop: 16 }}>
+          <div style={styles.fieldLabel}>{t('roster.discordId')}</div>
+          <input
+            style={{ ...shared.input, width: '100%', fontFamily: 'monospace' }}
+            value={discordId}
+            onChange={(e) => setDiscordId(e.target.value)}
+            placeholder="np. 123456789012345678"
+          />
+          <div style={{ fontSize: '0.78rem', color: colors.mutedDim, marginTop: 6, lineHeight: 1.5 }}>
+            {t('roster.discordIdHint')}
           </div>
         </div>
 

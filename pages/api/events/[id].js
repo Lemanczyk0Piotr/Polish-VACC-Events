@@ -14,6 +14,7 @@ const EDITABLE_FIELDS = [
   'image_url',
   'notes',
   'external_link',
+  'schedule_remarks',
 ];
 
 export default async function handler(req, res) {

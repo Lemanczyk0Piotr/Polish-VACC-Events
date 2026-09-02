@@ -30,7 +30,17 @@ export default async function handler(req, res) {
   }
   if (!requireAdmin(req, res)) return;
 
-  const { type, event_id, days = 1, year, month, target = 'events', force = false, image_base64 } = req.body || {};
+  const {
+    type,
+    event_id,
+    days = 1,
+    year,
+    month,
+    target = 'events',
+    force = false,
+    image_base64,
+    remarks,
+  } = req.body || {};
   const supabase = getSupabaseAdmin();
 
   try {
@@ -65,6 +75,15 @@ export default async function handler(req, res) {
         break;
       case 'schedule':
         if (!event_id) return res.status(400).json({ error: 'Brak event_id.' });
+        // Uwagi zapisujemy przy evencie, zanim pójdzie wysyłka — dzięki temu
+        // przetrwają do kolejnego otwarcia strony i trafią też do rozpiski
+        // wysłanej automatem, który czyta je z bazy.
+        if (typeof remarks === 'string') {
+          await supabase
+            .from('events')
+            .update({ schedule_remarks: remarks.trim() || null, updated_at: new Date().toISOString() })
+            .eq('id', event_id);
+        }
         // image_base64 przychodzi ze strony eventu — to wykres Gantta
         // narysowany w przeglądarce (lib/scheduleImage.js). Może być podany
         // jako czysty base64 albo jako data URL; obcinamy ewentualny prefiks.
