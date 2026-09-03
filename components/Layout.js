@@ -247,10 +247,15 @@ function AdminLoginModal({ onClose }) {
     e.preventDefault();
     setChecking(true);
     setError(null);
-    const ok = await login(password);
+    const result = await login(password);
     setChecking(false);
-    if (ok) onClose();
-    else setError(t('admin.invalidPassword'));
+    if (result.ok) {
+      onClose();
+    } else if (result.code === 'rate_limited') {
+      setError(t('admin.rateLimited', { n: result.retryAfterMinutes || 1 }));
+    } else {
+      setError(t('admin.invalidPassword'));
+    }
   };
 
   return (
