@@ -42,6 +42,14 @@ export default function PeriodStats() {
   const [error, setError] = useState(null);
   const [sending, setSending] = useState(false);
 
+  // Bez hasła admina okres jest sztywno na ostatnie 3 miesiące — ten sam
+  // limit co na /top-controllers (prośba admina, 2026-09-03) — niezależnie
+  // od stanu pickera, który i tak się dla nieadmina nie renderuje. Tak samo
+  // "tylko zakończone" jest wtedy zawsze włączone.
+  const effectiveFrom = isAdmin ? from : isoDate(monthsAgo(3));
+  const effectiveTo = isAdmin ? to : isoDate(new Date());
+  const effectiveOnlyCompleted = isAdmin ? onlyCompleted : true;
+
   useEffect(() => {
     let cancelled = false;
     setEvents(null);
@@ -51,10 +59,10 @@ export default function PeriodStats() {
       let query = supabase
         .from('events')
         .select('id, title, event_date, time_start, time_end, kind, status')
-        .gte('event_date', from)
-        .lte('event_date', to)
+        .gte('event_date', effectiveFrom)
+        .lte('event_date', effectiveTo)
         .order('event_date', { ascending: false });
-      if (onlyCompleted) query = query.eq('status', 'completed');
+      if (effectiveOnlyCompleted) query = query.eq('status', 'completed');
 
       const { data: evs, error: evErr } = await query;
       if (cancelled) return;
@@ -84,7 +92,7 @@ export default function PeriodStats() {
     return () => {
       cancelled = true;
     };
-  }, [from, to, onlyCompleted]);
+  }, [effectiveFrom, effectiveTo, effectiveOnlyCompleted]);
 
   const stats = useMemo(() => {
     if (!events || !assignments) return null;
@@ -131,34 +139,38 @@ export default function PeriodStats() {
       <h1 style={shared.h1}>{t('stats.periodTitle')}</h1>
       <p style={shared.sub}>{t('stats.periodSub')}</p>
 
-      <div style={{ ...shared.card, marginBottom: 20 }}>
-        <div style={styles.filterRow}>
-          <div>
-            <div style={styles.fieldLabel}>{t('stats.from')}</div>
-            <input type="date" style={shared.input} value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div>
-            <div style={styles.fieldLabel}>{t('stats.to')}</div>
-            <input type="date" style={shared.input} value={to} onChange={(e) => setTo(e.target.value)} />
-          </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            {PRESETS.map((p) => (
-              <button key={p.key} style={styles.presetBtn} onClick={() => applyPreset(p.months)}>
-                {t(`stats.preset_${p.key}`)}
-              </button>
-            ))}
-          </div>
-          <label style={styles.checkRow}>
-            <input type="checkbox" checked={onlyCompleted} onChange={(e) => setOnlyCompleted(e.target.checked)} />
-            <span>{t('stats.onlyCompleted')}</span>
-          </label>
-          {isAdmin && (
+      {isAdmin ? (
+        <div style={{ ...shared.card, marginBottom: 20 }}>
+          <div style={styles.filterRow}>
+            <div>
+              <div style={styles.fieldLabel}>{t('stats.from')}</div>
+              <input type="date" style={shared.input} value={from} onChange={(e) => setFrom(e.target.value)} />
+            </div>
+            <div>
+              <div style={styles.fieldLabel}>{t('stats.to')}</div>
+              <input type="date" style={shared.input} value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              {PRESETS.map((p) => (
+                <button key={p.key} style={styles.presetBtn} onClick={() => applyPreset(p.months)}>
+                  {t(`stats.preset_${p.key}`)}
+                </button>
+              ))}
+            </div>
+            <label style={styles.checkRow}>
+              <input type="checkbox" checked={onlyCompleted} onChange={(e) => setOnlyCompleted(e.target.checked)} />
+              <span>{t('stats.onlyCompleted')}</span>
+            </label>
             <button style={styles.discordBtn} onClick={() => sendToDiscord()} disabled={sending || !stats}>
               {sending ? t('stats.discordBusy') : t('stats.discordBtn')}
             </button>
-          )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <p style={{ color: colors.mutedDim, fontSize: '0.85rem', marginTop: -4, marginBottom: 20 }}>
+          {t('top.periodNotice')}
+        </p>
+      )}
 
       {error && <p style={{ color: colors.red }}>{error}</p>}
 
@@ -234,7 +246,7 @@ export default function PeriodStats() {
               rozbite event-po-evencie (prośba admina, 2026-09-03: nie
               wszystkie dane muszą się pokazywać publicznie, zwłaszcza
               dokładne rozpiski). */}
-          {isAdmin ? (
+          {isAdmin && (
             <section style={{ ...shared.card, marginTop: 20 }}>
               <div style={styles.sectionTitle}>{t('stats.eventsTitle')}</div>
               <div style={{ overflowX: 'auto' }}>
@@ -269,10 +281,6 @@ export default function PeriodStats() {
                   </tbody>
                 </table>
               </div>
-            </section>
-          ) : (
-            <section style={{ ...shared.card, marginTop: 20, color: colors.mutedDim, fontSize: '0.88rem' }}>
-              {t('stats.eventsTableAdminOnly')}
             </section>
           )}
 

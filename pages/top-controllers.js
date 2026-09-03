@@ -208,11 +208,6 @@ export default function TopControllers() {
       {error && <p style={{ color: colors.red }}>{error}</p>}
       {!rows && !error && <p style={shared.sub}>{t('top.loading')}</p>}
       {rows && ranked.length === 0 && <p style={{ color: colors.mutedDim }}>{t('top.noData')}</p>}
-      {!isAdmin && ranked.length > NON_ADMIN_LIMIT && (
-        <p style={{ color: colors.mutedDim, fontSize: '0.85rem', marginTop: -8, marginBottom: 16 }}>
-          {t('stats.loginForMore')}
-        </p>
-      )}
 
       {isAdmin && rows && ranked.length > 0 && (
         <div style={styles.tiles}>

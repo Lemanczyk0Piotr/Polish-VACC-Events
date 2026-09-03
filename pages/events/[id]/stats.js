@@ -162,7 +162,7 @@ export default function EventStats() {
           admina, 2026-09-03) — bez hasła widać już zbiorczo "kto kontrolował
           najdłużej" w wykresie wyżej, ale nie dokładny rozkład godzin na
           pozycję. */}
-      {isAdmin ? (
+      {isAdmin && (
         <section style={{ ...shared.card, marginTop: 20 }}>
           <div style={styles.sectionTitle}>{t('stats.positionsTitle')}</div>
           {positionsDetail.length === 0 ? (
@@ -195,10 +195,6 @@ export default function EventStats() {
               ))}
             </div>
           )}
-        </section>
-      ) : (
-        <section style={{ ...shared.card, marginTop: 20, color: colors.mutedDim, fontSize: '0.88rem' }}>
-          {t('stats.loginForMore')}
         </section>
       )}
 
