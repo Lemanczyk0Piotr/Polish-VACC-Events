@@ -145,14 +145,16 @@ export default function Events() {
       <div style={styles.list}>
         {sorted.map((ev) => {
           const meta = eventKindMeta[ev.kind] || eventKindMeta.event;
+          const kindKey = eventKindMeta[ev.kind] ? ev.kind : 'event';
           const statusMeta = eventStatusMeta[ev.status] || eventStatusMeta.draft;
+          const statusKey = eventStatusMeta[ev.status] ? ev.status : 'draft';
           return (
             <div key={ev.id} style={styles.card(meta.color)}>
               {ev.image_url && <img src={ev.image_url} alt="" style={styles.thumb} />}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={styles.cardTop}>
-                  <span style={shared.badge(meta.color, meta.bg)}>{meta.label}</span>
-                  <span style={shared.badge(statusMeta.color, 'transparent')}>{statusMeta.label}</span>
+                  <span style={shared.badge(meta.color, meta.bg)}>{t(`events.kindLabel.${kindKey}`)}</span>
+                  <span style={shared.badge(statusMeta.color, 'transparent')}>{t(`events.statusLabel.${statusKey}`)}</span>
                   {ev.category && <span style={styles.categoryTag}>{ev.category}</span>}
                 </div>
                 <div style={styles.cardTitle}>{ev.title}</div>
@@ -282,28 +284,29 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
   };
 
   const meta = eventKindMeta[form.kind] || eventKindMeta.event;
+  const kindKey = eventKindMeta[form.kind] ? form.kind : 'event';
 
   return (
     <div style={shared.modalOverlay} onClick={onClose}>
       <form style={shared.modal} onClick={(e) => e.stopPropagation()} onSubmit={submit}>
         <h2 style={{ ...shared.h1, color: meta.color }}>
-          {initial ? t('events.modalEditTitle') : t('events.modalNewTitle', { label: meta.label })}
+          {initial ? t('events.modalEditTitle') : t('events.modalNewTitle', { label: t(`events.kindLabel.${kindKey}`) })}
         </h2>
 
         <div style={styles.kindRow}>
-          {Object.entries(eventKindMeta).map(([k, m]) => (
+          {Object.entries(eventKindMeta).map(([k]) => (
             <button
               type="button"
               key={k}
               onClick={() => setForm((f) => ({ ...f, kind: k }))}
               style={{
                 ...styles.kindPill,
-                borderColor: m.color,
-                color: form.kind === k ? '#fff' : m.color,
-                background: form.kind === k ? m.color : 'transparent',
+                borderColor: eventKindMeta[k].color,
+                color: form.kind === k ? '#fff' : eventKindMeta[k].color,
+                background: form.kind === k ? eventKindMeta[k].color : 'transparent',
               }}
             >
-              {m.label}
+              {t(`events.kindLabel.${k}`)}
             </button>
           ))}
         </div>

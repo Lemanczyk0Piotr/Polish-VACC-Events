@@ -89,15 +89,17 @@ export default function EventStats() {
   }
 
   const kindMeta = eventKindMeta[event.kind] || eventKindMeta.event;
+  const kindKey = eventKindMeta[event.kind] ? event.kind : 'event';
   const statusMeta = eventStatusMeta[event.status] || eventStatusMeta.draft;
+  const statusKey = eventStatusMeta[event.status] ? event.status : 'draft';
 
   return (
     <Layout>
       <div style={styles.headerRow}>
         <div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6, flexWrap: 'wrap' }}>
-            <span style={shared.badge(kindMeta.color, kindMeta.bg)}>{kindMeta.label}</span>
-            <span style={shared.badge(statusMeta.color, 'transparent')}>{statusMeta.label}</span>
+            <span style={shared.badge(kindMeta.color, kindMeta.bg)}>{t(`events.kindLabel.${kindKey}`)}</span>
+            <span style={shared.badge(statusMeta.color, 'transparent')}>{t(`events.statusLabel.${statusKey}`)}</span>
           </div>
           <h1 style={shared.h1}>{event.title}</h1>
           <p style={shared.sub}>
