@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
+import StatBars from '../components/StatBars';
 import { supabase } from '../lib/supabaseClient';
-import { colors, shared, formatDate } from '../lib/theme';
+import { colors, shared, font, formatDate } from '../lib/theme';
 import { useLang } from '../lib/i18n';
 import { useAdminMode } from '../lib/adminMode';
 
@@ -12,23 +13,64 @@ function fmtDuration(mins) {
   return `${h}h ${String(m).padStart(2, '0')}m`;
 }
 
+function isoDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+
+function monthsAgo(n) {
+  const d = new Date();
+  d.setUTCMonth(d.getUTCMonth() - n);
+  return d;
+}
+
+// Bez hasła admina ranking pokazuje tylko ostatnie 3 miesiące — ten sam okres,
+// co domyślny na /stats — żeby nie ujawniać publicznie danych "od zawsze"
+// (prośba admina, 2026-09-03). Admin dostaje dokładnie ten sam wybór okresu
+// co na /stats (presety + własny zakres dat), z domyślnym ustawieniem na te
+// same 3 miesiące.
+const PRESETS = [
+  { key: 'm1', months: 1 },
+  { key: 'm3', months: 3 },
+  { key: 'm6', months: 6 },
+  { key: 'y1', months: 12 },
+];
+
 export default function TopControllers() {
   const { lang, t } = useLang();
   const { isAdmin } = useAdminMode();
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  const [from, setFrom] = useState(() => isoDate(monthsAgo(3)));
+  const [to, setTo] = useState(() => isoDate(new Date()));
+
+  // Nieadmin zawsze dostaje ostatnie 3 miesiące, niezależnie od stanu
+  // pickera (który i tak się dla niego nie renderuje) — gdyby ktoś był
+  // zalogowany, poustawiał inny zakres, a potem się wylogował, efektywny
+  // zakres i tak wraca do stałych 3 miesięcy.
+  const effectiveFrom = isAdmin ? from : isoDate(monthsAgo(3));
+  const effectiveTo = isAdmin ? to : isoDate(new Date());
 
   useEffect(() => {
+    let cancelled = false;
+    setRows(null);
     supabase
       .from('event_assignments')
-      .select('id, session_minutes, controllers:controllers!event_assignments_controller_id_fkey(id, name, cid, rating), positions(callsign, type), events!inner(title, event_date, status)')
+      .select(
+        'id, session_minutes, controllers:controllers!event_assignments_controller_id_fkey(id, name, cid, rating), positions(callsign, type), events!inner(title, event_date, status)'
+      )
       .eq('events.status', 'completed')
+      .gte('events.event_date', effectiveFrom)
+      .lte('events.event_date', effectiveTo)
       .then(({ data, error }) => {
+        if (cancelled) return;
         if (error) setError(error.message);
         else setRows(data || []);
       });
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [effectiveFrom, effectiveTo]);
 
   const ranked = useMemo(() => {
     if (!rows) return [];
@@ -62,12 +104,43 @@ export default function TopControllers() {
     return list;
   }, [rows]);
 
+  // Rozbudowa statystyk po stronie admina (2026-09-03): podsumowanie okresu
+  // w kafelkach + rozbicie czasu wg rangi — dokłada kontekst do samego
+  // rankingu bez duplikowania całej strony /stats.
+  const summary = useMemo(() => {
+    const totalMinutes = ranked.reduce((sum, c) => sum + c.totalMinutes, 0);
+    const totalSessions = ranked.reduce((sum, c) => sum + c.entries.length, 0);
+    return {
+      controllers: ranked.length,
+      totalMinutes,
+      totalSessions,
+      avg: ranked.length ? Math.round(totalMinutes / ranked.length) : 0,
+    };
+  }, [ranked]);
+
+  const byRating = useMemo(() => {
+    const map = new Map();
+    for (const c of ranked) {
+      const key = c.rating || '—';
+      if (!map.has(key)) map.set(key, { rating: key, minutes: 0, controllers: 0 });
+      const r = map.get(key);
+      r.minutes += c.totalMinutes;
+      r.controllers += 1;
+    }
+    return Array.from(map.values()).sort((a, b) => b.minutes - a.minutes);
+  }, [ranked]);
+
   // Bez hasła administratora widać tylko czołową dziesiątkę — pełna lista
   // (i eksport CSV, już admin-only) zostaje zarezerwowana dla admina, żeby
   // nie ujawniać wszystkich danych rankingu publicznie (prośba admina,
   // 2026-09-03).
   const NON_ADMIN_LIMIT = 10;
   const visible = isAdmin ? ranked : ranked.slice(0, NON_ADMIN_LIMIT);
+
+  const applyPreset = (months) => {
+    setFrom(isoDate(monthsAgo(months)));
+    setTo(isoDate(new Date()));
+  };
 
   const exportCsv = () => {
     // Non-admins only ever see CIDs in the UI (patrz render niżej) — CSV
@@ -106,13 +179,48 @@ export default function TopControllers() {
         )}
       </div>
 
+      {isAdmin ? (
+        <div style={{ ...shared.card, marginBottom: 20 }}>
+          <div style={styles.filterRow}>
+            <div>
+              <div style={styles.fieldLabel}>{t('stats.from')}</div>
+              <input type="date" style={shared.input} value={from} onChange={(e) => setFrom(e.target.value)} />
+            </div>
+            <div>
+              <div style={styles.fieldLabel}>{t('stats.to')}</div>
+              <input type="date" style={shared.input} value={to} onChange={(e) => setTo(e.target.value)} />
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              {PRESETS.map((p) => (
+                <button key={p.key} style={styles.presetBtn} onClick={() => applyPreset(p.months)}>
+                  {t(`stats.preset_${p.key}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p style={{ color: colors.mutedDim, fontSize: '0.85rem', marginTop: -12, marginBottom: 16 }}>
+          {t('top.periodNotice')}
+        </p>
+      )}
+
       {error && <p style={{ color: colors.red }}>{error}</p>}
       {!rows && !error && <p style={shared.sub}>{t('top.loading')}</p>}
       {rows && ranked.length === 0 && <p style={{ color: colors.mutedDim }}>{t('top.noData')}</p>}
       {!isAdmin && ranked.length > NON_ADMIN_LIMIT && (
-        <p style={{ color: colors.mutedDim, fontSize: '0.85rem', marginTop: -12, marginBottom: 16 }}>
+        <p style={{ color: colors.mutedDim, fontSize: '0.85rem', marginTop: -8, marginBottom: 16 }}>
           {t('stats.loginForMore')}
         </p>
+      )}
+
+      {isAdmin && rows && ranked.length > 0 && (
+        <div style={styles.tiles}>
+          <Tile label={t('stats.tileControllers')} value={summary.controllers} />
+          <Tile label={t('stats.tileTotalTime')} value={fmtDuration(summary.totalMinutes)} />
+          <Tile label={t('stats.tileShifts')} value={summary.totalSessions} />
+          <Tile label={t('stats.tileAvgPerController')} value={fmtDuration(summary.avg)} />
+        </div>
       )}
 
       <div style={styles.list}>
@@ -165,7 +273,32 @@ export default function TopControllers() {
           );
         })}
       </div>
+
+      {isAdmin && rows && byRating.length > 0 && (
+        <section style={{ ...shared.card, marginTop: 20 }}>
+          <div style={styles.sectionTitle}>{t('top.byRatingTitle')}</div>
+          <StatBars
+            items={byRating.map((r) => ({
+              key: r.rating,
+              label: r.rating,
+              sub: t('top.ratingSub', { n: r.controllers }),
+              value: r.minutes,
+            }))}
+            formatValue={fmtDuration}
+            emptyText={t('stats.noData')}
+          />
+        </section>
+      )}
     </Layout>
+  );
+}
+
+function Tile({ label, value }) {
+  return (
+    <div style={styles.tile}>
+      <div style={styles.tileLabel}>{label}</div>
+      <div style={styles.tileValue}>{value}</div>
+    </div>
   );
 }
 
@@ -183,6 +316,37 @@ const styles = {
     flexWrap: 'wrap',
     gap: 12,
     marginBottom: 24,
+  },
+  filterRow: { display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' },
+  fieldLabel: { fontSize: '0.75rem', color: colors.muted, fontWeight: 700, marginBottom: 6, letterSpacing: '0.04em' },
+  presetBtn: {
+    padding: '9px 14px',
+    borderRadius: 8,
+    border: `1px solid ${colors.border}`,
+    background: 'transparent',
+    color: colors.muted,
+    fontWeight: 600,
+    fontSize: '0.82rem',
+    cursor: 'pointer',
+  },
+  tiles: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 20 },
+  tile: { ...shared.card, padding: '14px 16px' },
+  tileLabel: {
+    fontFamily: font.mono,
+    fontSize: '0.72rem',
+    letterSpacing: '0.06em',
+    color: colors.mutedDim,
+    fontWeight: 700,
+    marginBottom: 6,
+  },
+  tileValue: { fontSize: '1.5rem', fontWeight: 700, fontFamily: font.display, color: colors.text },
+  sectionTitle: {
+    fontFamily: font.mono,
+    fontSize: '0.78rem',
+    letterSpacing: '0.08em',
+    color: colors.muted,
+    fontWeight: 700,
+    marginBottom: 14,
   },
   list: { display: 'flex', flexDirection: 'column', gap: 10 },
   rowBtn: {
