@@ -369,29 +369,36 @@ export default function EventScheduler() {
         </div>
       </div>
 
-      <div style={styles.summaryBar}>
-        <div style={styles.fieldLabel}>{t('scheduler.assignedControllers')}</div>
-        <div style={styles.summaryGroups}>
-          {TYPE_ORDER.map((type) => {
-            const list = summaryByType[type] || [];
-            if (list.length === 0) return null;
-            return (
-              <div key={type} style={styles.summaryGroup}>
-                <span style={{ color: positionTypeColor[type], fontWeight: 700, fontSize: '0.82rem' }}>{type}</span>
-                {list.map((a) => (
-                  <span key={a.id} style={{ color: colors.text, fontSize: '0.88rem' }}>
-                    {controllerName(a.controllers, isAdmin)} ({a.controllers?.rating})
-                    {a.student ? `${t('scheduler.studentLabel')}${controllerName(a.student, isAdmin)}` : ''}
-                  </span>
-                ))}
-              </div>
-            );
-          })}
-          {assignments && assignments.length === 0 && (
-            <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('scheduler.noAssignments')}</span>
-          )}
+      {/* Lista przypisanych kontrolerów widoczna tylko z hasłem admina —
+          bez hasła strona eventu nie pokazuje obsady wcale (prośba admina,
+          2026-09-03); kto ma publiczny link do rozpiski
+          (/events/[id]/schedule, przycisk „KOPIUJ LINK DO ROZPISKI" niżej),
+          nadal widzi tam wykres Gantta z granicą „bez admina tylko CID". */}
+      {isAdmin && (
+        <div style={styles.summaryBar}>
+          <div style={styles.fieldLabel}>{t('scheduler.assignedControllers')}</div>
+          <div style={styles.summaryGroups}>
+            {TYPE_ORDER.map((type) => {
+              const list = summaryByType[type] || [];
+              if (list.length === 0) return null;
+              return (
+                <div key={type} style={styles.summaryGroup}>
+                  <span style={{ color: positionTypeColor[type], fontWeight: 700, fontSize: '0.82rem' }}>{type}</span>
+                  {list.map((a) => (
+                    <span key={a.id} style={{ color: colors.text, fontSize: '0.88rem' }}>
+                      {controllerName(a.controllers, isAdmin)} ({a.controllers?.rating})
+                      {a.student ? `${t('scheduler.studentLabel')}${controllerName(a.student, isAdmin)}` : ''}
+                    </span>
+                  ))}
+                </div>
+              );
+            })}
+            {assignments && assignments.length === 0 && (
+              <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('scheduler.noAssignments')}</span>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Funkcja zapisów (formularz + lista zgłoszeń dla admina) wyłączona na
           prośbę admina (2026-09-03) — niepotrzebna na obecnym etapie rozwoju

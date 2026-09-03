@@ -116,9 +116,12 @@ export default function TopControllers() {
       )}
 
       <div style={styles.list}>
-        {visible.map((c, i) => (
-          <div key={c.id} style={shared.card}>
-            <button style={styles.rowBtn} onClick={() => setExpanded((v) => (v === c.id ? null : c.id))}>
+        {visible.map((c, i) => {
+          // Bez hasła admina wiersz nie rozwija się w ogóle — widać tylko
+          // CID, sumę godzin i liczbę sesji, bez szczegółowej rozpiski po
+          // eventach/pozycjach (prośba admina, 2026-09-03).
+          const row = (
+            <>
               <span style={styles.rank}>#{i + 1}</span>
               <span style={{ flex: 1, textAlign: 'left' }}>
                 <span style={{ fontWeight: 700 }}>{isAdmin ? c.name : c.cid || '—'}</span>{' '}
@@ -130,24 +133,37 @@ export default function TopControllers() {
               <span style={{ color: colors.mutedDim, marginLeft: 12 }}>
                 {t('top.sessions', { n: c.entries.length })}
               </span>
-              <span style={{ marginLeft: 10, color: colors.mutedDim }}>{expanded === c.id ? '▲' : '▼'}</span>
-            </button>
+              {isAdmin && (
+                <span style={{ marginLeft: 10, color: colors.mutedDim }}>{expanded === c.id ? '▲' : '▼'}</span>
+              )}
+            </>
+          );
+          return (
+            <div key={c.id} style={shared.card}>
+              {isAdmin ? (
+                <button style={styles.rowBtn} onClick={() => setExpanded((v) => (v === c.id ? null : c.id))}>
+                  {row}
+                </button>
+              ) : (
+                <div style={{ ...styles.rowBtn, cursor: 'default' }}>{row}</div>
+              )}
 
-            {expanded === c.id && (
-              <div style={styles.entries}>
-                {c.entries.map((e, idx) => (
-                  <div key={idx} style={styles.entryRow}>
-                    <span style={{ flex: 1 }}>
-                      {e.event} <span style={{ color: colors.mutedDim }}>· {formatDate(e.date, lang)}</span>
-                    </span>
-                    <span style={{ color: colors.blue, fontFamily: 'monospace', marginRight: 12 }}>{e.callsign}</span>
-                    <span style={{ color: colors.muted, fontFamily: 'monospace' }}>{fmtDuration(e.minutes)}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+              {isAdmin && expanded === c.id && (
+                <div style={styles.entries}>
+                  {c.entries.map((e, idx) => (
+                    <div key={idx} style={styles.entryRow}>
+                      <span style={{ flex: 1 }}>
+                        {e.event} <span style={{ color: colors.mutedDim }}>· {formatDate(e.date, lang)}</span>
+                      </span>
+                      <span style={{ color: colors.blue, fontFamily: 'monospace', marginRight: 12 }}>{e.callsign}</span>
+                      <span style={{ color: colors.muted, fontFamily: 'monospace' }}>{fmtDuration(e.minutes)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </Layout>
   );
