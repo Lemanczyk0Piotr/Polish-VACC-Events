@@ -197,28 +197,7 @@ export default function Layout({ children }) {
           </a>
           <span style={{ color: colors.mutedDim }}>{t('footer.tagline')}</span>
         </div>
-        <div style={styles.footerRow}>
-          {/* Dwie wersje logo (kolorowa / biała) zamiast jednej przebarwianej
-              filtrem CSS — logo ma cienkie, jasne detale (samolocik w
-              czerwonej fladze), które przy prostym invert() wyszłyby brzydko.
-              Przełącznik czysto w CSS (atrybut [data-theme] na <html>, patrz
-              pages/_document.js) — bez tego trzeba by JS-owego stanu i
-              ryzyka hydration mismatch, tak jak przy przełączniku
-              light/dark wyżej. */}
-          <img
-            src="/plvacc-logo-color.png"
-            alt="Polish VACC"
-            className="pv-footer-logo pv-footer-logo-light"
-            style={styles.footerLogo}
-          />
-          <img
-            src="/plvacc-logo-white.png"
-            alt="Polish VACC"
-            className="pv-footer-logo pv-footer-logo-dark"
-            style={styles.footerLogo}
-          />
-          <span style={{ color: colors.mutedDim }}>{t('footer.realisation')}</span>
-        </div>
+        <span style={{ color: colors.mutedDim }}>{t('footer.realisation')}</span>
       </footer>
 
       <style jsx global>{`
@@ -275,11 +254,6 @@ export default function Layout({ children }) {
         @media (max-width: 380px) {
           .pv-brand-text { display: none; }
         }
-        /* Logo w stopce: kolorowa wersja domyślnie (jasny motyw), biała pod
-           [data-theme="dark"] — patrz komentarz przy <img> w JSX wyżej. */
-        .pv-footer-logo-dark { display: none; }
-        [data-theme="dark"] .pv-footer-logo-light { display: none; }
-        [data-theme="dark"] .pv-footer-logo-dark { display: block; }
       `}</style>
 
       {adminModalOpen && <AdminLoginModal onClose={() => setAdminModalOpen(false)} />}
@@ -469,12 +443,13 @@ const styles = {
     background: colors.card,
     padding: '14px 32px',
     display: 'flex',
-    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 8,
+    flexWrap: 'wrap',
     fontSize: '0.8rem',
     color: colors.muted,
   },
   footerRow: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   footerLink: { color: colors.amber, textDecoration: 'none', fontWeight: 700 },
-  footerLogo: { height: 20, width: 'auto', display: 'block' },
 };
