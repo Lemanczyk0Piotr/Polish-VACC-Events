@@ -62,6 +62,13 @@ export default function TopControllers() {
     return list;
   }, [rows]);
 
+  // Bez hasła administratora widać tylko czołową dziesiątkę — pełna lista
+  // (i eksport CSV, już admin-only) zostaje zarezerwowana dla admina, żeby
+  // nie ujawniać wszystkich danych rankingu publicznie (prośba admina,
+  // 2026-09-03).
+  const NON_ADMIN_LIMIT = 10;
+  const visible = isAdmin ? ranked : ranked.slice(0, NON_ADMIN_LIMIT);
+
   const exportCsv = () => {
     // Non-admins only ever see CIDs in the UI (patrz render niżej) — CSV
     // eksportowane przez nich musi zachować tę samą granicę, inaczej
@@ -102,9 +109,14 @@ export default function TopControllers() {
       {error && <p style={{ color: colors.red }}>{error}</p>}
       {!rows && !error && <p style={shared.sub}>{t('top.loading')}</p>}
       {rows && ranked.length === 0 && <p style={{ color: colors.mutedDim }}>{t('top.noData')}</p>}
+      {!isAdmin && ranked.length > NON_ADMIN_LIMIT && (
+        <p style={{ color: colors.mutedDim, fontSize: '0.85rem', marginTop: -12, marginBottom: 16 }}>
+          {t('stats.loginForMore')}
+        </p>
+      )}
 
       <div style={styles.list}>
-        {ranked.map((c, i) => (
+        {visible.map((c, i) => (
           <div key={c.id} style={shared.card}>
             <button style={styles.rowBtn} onClick={() => setExpanded((v) => (v === c.id ? null : c.id))}>
               <span style={styles.rank}>#{i + 1}</span>

@@ -180,8 +180,11 @@ export default function PeriodStats() {
           <div style={styles.twoCol}>
             <section style={shared.card}>
               <div style={styles.sectionTitle}>{t('stats.topControllersTitle')}</div>
+              {/* Bez hasła admina widać krótszą listę (10 zamiast 15) — te same
+                  ograniczenie duchowo co na /top-controllers (prośba admina,
+                  2026-09-03): mniej danych publicznie, nic więcej. */}
               <StatBars
-                items={stats.controllers.slice(0, 15).map((c) => ({
+                items={stats.controllers.slice(0, isAdmin ? 15 : 10).map((c) => ({
                   key: c.id,
                   label: controllerLabel(c, isAdmin),
                   sub: t('stats.controllerSub', { rating: c.rating || '—', events: c.eventCount, shifts: c.shifts }),
@@ -225,46 +228,58 @@ export default function PeriodStats() {
             />
           </section>
 
-          <section style={{ ...shared.card, marginTop: 20 }}>
-            <div style={styles.sectionTitle}>{t('stats.eventsTitle')}</div>
-            <div style={{ overflowX: 'auto' }}>
-              <table style={styles.table}>
-                <thead>
-                  <tr>
-                    <th style={styles.th}>{t('stats.colDate')}</th>
-                    <th style={styles.th}>{t('stats.colEvent')}</th>
-                    <th style={styles.thNum}>{t('stats.colControllers')}</th>
-                    <th style={styles.thNum}>{t('stats.colPositions')}</th>
-                    <th style={styles.thNum}>{t('stats.colShifts')}</th>
-                    <th style={styles.thNum}>{t('stats.colTime')}</th>
-                    <th style={styles.th} />
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.events.map((e) => (
-                    <tr key={e.id}>
-                      <td style={styles.tdMono}>{formatDate(e.event_date, lang)}</td>
-                      <td style={styles.td}>{e.title}</td>
-                      <td style={styles.tdNum}>{e.controllerCount}</td>
-                      <td style={styles.tdNum}>{e.positionCount}</td>
-                      <td style={styles.tdNum}>{e.shifts}</td>
-                      <td style={styles.tdNum}>{fmtDuration(e.minutes)}</td>
-                      <td style={styles.td}>
-                        <Link href={`/events/${e.id}/stats`} style={styles.rowLink}>
-                          {t('stats.details')}
-                        </Link>
-                      </td>
+          {/* Szczegółowa tabela wydarzeń (dokładne liczby per event + link do
+              jeszcze dokładniejszej rozpiski) jest teraz admin-only — bez
+              hasła widać już te same dane zbiorczo na wykresie wyżej, ale nie
+              rozbite event-po-evencie (prośba admina, 2026-09-03: nie
+              wszystkie dane muszą się pokazywać publicznie, zwłaszcza
+              dokładne rozpiski). */}
+          {isAdmin ? (
+            <section style={{ ...shared.card, marginTop: 20 }}>
+              <div style={styles.sectionTitle}>{t('stats.eventsTitle')}</div>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>{t('stats.colDate')}</th>
+                      <th style={styles.th}>{t('stats.colEvent')}</th>
+                      <th style={styles.thNum}>{t('stats.colControllers')}</th>
+                      <th style={styles.thNum}>{t('stats.colPositions')}</th>
+                      <th style={styles.thNum}>{t('stats.colShifts')}</th>
+                      <th style={styles.thNum}>{t('stats.colTime')}</th>
+                      <th style={styles.th} />
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </section>
+                  </thead>
+                  <tbody>
+                    {stats.events.map((e) => (
+                      <tr key={e.id}>
+                        <td style={styles.tdMono}>{formatDate(e.event_date, lang)}</td>
+                        <td style={styles.td}>{e.title}</td>
+                        <td style={styles.tdNum}>{e.controllerCount}</td>
+                        <td style={styles.tdNum}>{e.positionCount}</td>
+                        <td style={styles.tdNum}>{e.shifts}</td>
+                        <td style={styles.tdNum}>{fmtDuration(e.minutes)}</td>
+                        <td style={styles.td}>
+                          <Link href={`/events/${e.id}/stats`} style={styles.rowLink}>
+                            {t('stats.details')}
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : (
+            <section style={{ ...shared.card, marginTop: 20, color: colors.mutedDim, fontSize: '0.88rem' }}>
+              {t('stats.eventsTableAdminOnly')}
+            </section>
+          )}
 
           <section style={{ ...shared.card, marginTop: 20 }}>
             <div style={styles.sectionTitle}>{t('stats.positionsRankTitle')}</div>
             <StatBars
-              items={stats.positions.slice(0, 20).map((p) => ({
+              items={stats.positions.slice(0, isAdmin ? 20 : 10).map((p) => ({
                 key: p.callsign,
                 label: p.callsign,
                 sub: t('stats.positionSub', { c: p.controllerCount, e: p.eventCount }),

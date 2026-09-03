@@ -143,7 +143,7 @@ export default function EventStats() {
         <section style={shared.card}>
           <div style={styles.sectionTitle}>{t('stats.topControllersTitle')}</div>
           <StatBars
-            items={stats.controllers.slice(0, 12).map((c) => ({
+            items={stats.controllers.slice(0, isAdmin ? 12 : 8).map((c) => ({
               key: c.id,
               label: controllerLabel(c, isAdmin),
               sub: `${c.rating || '—'} · ${c.positions.join(', ') || '—'}`,
@@ -156,39 +156,49 @@ export default function EventStats() {
         </section>
       </div>
 
-      <section style={{ ...shared.card, marginTop: 20 }}>
-        <div style={styles.sectionTitle}>{t('stats.positionsTitle')}</div>
-        {positionsDetail.length === 0 ? (
-          <p style={{ color: colors.mutedDim }}>{t('stats.noData')}</p>
-        ) : (
-          <div style={styles.posGrid}>
-            {positionsDetail.map((p) => (
-              <div key={p.callsign} style={styles.posCard(positionTypeColor[p.type] || colors.border)}>
-                <div style={styles.posHead}>
-                  <span style={{ fontWeight: 700 }}>{p.callsign}</span>
-                  <span style={{ color: colors.mutedDim, fontFamily: font.mono, fontSize: '0.8rem' }}>
-                    {fmtDuration(p.minutes)}
-                  </span>
-                </div>
-                {p.items.map((it) => (
-                  <div key={it.id} style={styles.shiftRow}>
-                    <span style={styles.shiftTime}>
-                      {it.from}–{it.to}z
-                    </span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      {controllerLabel(it.controller, isAdmin)}
-                      {it.student ? ` ${t('stats.studentLabel')} ${controllerLabel(it.student, isAdmin)}` : ''}
-                    </span>
-                    <span style={{ color: colors.mutedDim, fontFamily: font.mono, fontSize: '0.78rem' }}>
-                      {fmtDuration(it.minutes)}
+      {/* Dokładna rozpiska zmiana-po-zmianie jest teraz admin-only (prośba
+          admina, 2026-09-03) — bez hasła widać już zbiorczo "kto kontrolował
+          najdłużej" w wykresie wyżej, ale nie dokładny rozkład godzin na
+          pozycję. */}
+      {isAdmin ? (
+        <section style={{ ...shared.card, marginTop: 20 }}>
+          <div style={styles.sectionTitle}>{t('stats.positionsTitle')}</div>
+          {positionsDetail.length === 0 ? (
+            <p style={{ color: colors.mutedDim }}>{t('stats.noData')}</p>
+          ) : (
+            <div style={styles.posGrid}>
+              {positionsDetail.map((p) => (
+                <div key={p.callsign} style={styles.posCard(positionTypeColor[p.type] || colors.border)}>
+                  <div style={styles.posHead}>
+                    <span style={{ fontWeight: 700 }}>{p.callsign}</span>
+                    <span style={{ color: colors.mutedDim, fontFamily: font.mono, fontSize: '0.8rem' }}>
+                      {fmtDuration(p.minutes)}
                     </span>
                   </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+                  {p.items.map((it) => (
+                    <div key={it.id} style={styles.shiftRow}>
+                      <span style={styles.shiftTime}>
+                        {it.from}–{it.to}z
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        {controllerLabel(it.controller, isAdmin)}
+                        {it.student ? ` ${t('stats.studentLabel')} ${controllerLabel(it.student, isAdmin)}` : ''}
+                      </span>
+                      <span style={{ color: colors.mutedDim, fontFamily: font.mono, fontSize: '0.78rem' }}>
+                        {fmtDuration(it.minutes)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ) : (
+        <section style={{ ...shared.card, marginTop: 20, color: colors.mutedDim, fontSize: '0.88rem' }}>
+          {t('stats.loginForMore')}
+        </section>
+      )}
 
       {signupSummary.unassigned.length > 0 && (
         <section style={{ ...shared.card, marginTop: 20 }}>

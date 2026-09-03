@@ -47,7 +47,6 @@ export default function EventScheduler() {
   const [positions, setPositions] = useState(null);
   const [controllers, setControllers] = useState(null);
   const [assignments, setAssignments] = useState(null);
-  const [signups, setSignups] = useState(null);
   const [error, setError] = useState(null);
   const [staffedOnly, setStaffedOnly] = useState(false);
   const [addingFor, setAddingFor] = useState(null); // position id
@@ -84,12 +83,6 @@ export default function EventScheduler() {
         if (error) setError(error.message);
         else setAssignments(data || []);
       });
-    supabase
-      .from('signup_requests')
-      .select('*, controllers(name, cid, rating), preferred_position:positions(callsign, type)')
-      .eq('event_id', id)
-      .order('created_at', { ascending: true })
-      .then(({ data }) => setSignups(data || []));
   };
 
   useEffect(load, [id]);
@@ -189,20 +182,6 @@ export default function EventScheduler() {
     const res = await adminFetch(password, `/api/assignments/${assignmentId}`, { method: 'DELETE' });
     if (res.ok) load();
     else alert(t('scheduler.removeFailed'));
-  };
-
-  // Wypisanie kontrolera z eventu — kasuje wszystkie wiersze jego zgłoszenia
-  // (do 3 preferencji), nie pojedynczy wiersz.
-  const removeSignup = async (entry) => {
-    const who = entry.controller?.name || entry.controller?.cid || '';
-    if (!confirm(t('signup.removeConfirm', { name: who }))) return;
-    const res = await adminFetch(
-      password,
-      `/api/signups?event_id=${id}&controller_id=${entry.controllerId}`,
-      { method: 'DELETE' }
-    );
-    if (res.ok) load();
-    else alert(t('signup.removeFailed'));
   };
 
   const clearAll = async () => {
@@ -331,7 +310,7 @@ export default function EventScheduler() {
 
   return (
     <Layout>
-      <div style={styles.topGrid}>
+      <div className="pv-event-top-grid" style={styles.topGrid}>
         <div>
           {event.image_url ? (
             <img src={event.image_url} alt="" style={styles.banner} />
@@ -397,27 +376,12 @@ export default function EventScheduler() {
         </div>
       </div>
 
-      {/* Na zakończone wydarzenie nie da się już zapisać — zamiast formularza
-          pokazujemy krótką informację. To samo sprawdza serwer w
-          /api/signups, więc nie da się tego obejść wysyłając żądanie
-          bezpośrednio. */}
-      {event.status === 'completed' ? (
-        <div style={{ ...shared.card, marginBottom: 20, color: colors.mutedDim }}>
-          {t('signup.closedCompleted')}
-        </div>
-      ) : (
-        // Ukryte pozycje (visible = false) nie są do wzięcia, więc nie ma sensu
-        // proponować ich w preferencjach zapisu.
-        <SignupForm
-          eventId={id}
-          event={event}
-          controllers={controllers ? sortControllers(controllers) : []}
-          positions={(positions || []).filter((p) => p.visible !== false)}
-          onSaved={load}
-        />
-      )}
-
-      {isAdmin && <SignupsList signups={signups} isAdmin={isAdmin} onDelete={removeSignup} />}
+      {/* Funkcja zapisów (formularz + lista zgłoszeń dla admina) wyłączona na
+          prośbę admina (2026-09-03) — niepotrzebna na obecnym etapie rozwoju
+          aplikacji. Admin przypisuje kontrolerów bezpośrednio (patrz
+          AddControllerForm poniżej). Endpoint /api/signups i tabela
+          signup_requests zostają nietknięte (dane historyczne, np. na
+          /events/[id]/stats), tylko UI do składania nowych zgłoszeń zniknęło. */}
 
       {isAdmin && (
         <>
@@ -562,6 +526,13 @@ export default function EventScheduler() {
           })}
         </>
       )}
+      <style jsx global>{`
+        @media (max-width: 760px) {
+          .pv-event-top-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </Layout>
   );
 }
@@ -675,201 +646,7 @@ function PositionPicker({ positions, value, onPick, t, fieldId }) {
   );
 }
 
-function SignupForm({ eventId, event, controllers, positions, onSaved }) {
-  const { t } = useLang();
-  // Bez trybu administratora lista "wybierz siebie" pokazuje CID-y, nie
-  // nazwiska — ta sama reguła co wszędzie indziej w aplikacji.
-  const { isAdmin } = useAdminMode();
-  const [controllerId, setControllerId] = useState('');
-  const [choice1, setChoice1] = useState('');
-  const [choice2, setChoice2] = useState('');
-  const [choice3, setChoice3] = useState('');
-  const [hoursStart, setHoursStart] = useState(() => (event?.time_start ? event.time_start.slice(0, 5) : ''));
-  const [hoursEnd, setHoursEnd] = useState(() => (event?.time_end ? event.time_end.slice(0, 5) : ''));
-  const [notes, setNotes] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState(null);
-  const [success, setSuccess] = useState(false);
-
-  const submit = async (e) => {
-    e.preventDefault();
-    setErr(null);
-    setSuccess(false);
-    if (!controllerId) {
-      setErr(t('signup.validationName'));
-      return;
-    }
-    const choices = [{ position_id: choice1 || null, priority: 1 }];
-    if (choice2) choices.push({ position_id: choice2, priority: 2 });
-    if (choice3) choices.push({ position_id: choice3, priority: 3 });
-
-    setSaving(true);
-    try {
-      const res = await fetch('/api/signups', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_id: eventId,
-          controller_id: controllerId,
-          choices,
-          notes,
-          time_start: hoursStart || null,
-          time_end: hoursEnd || null,
-        }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || t('signup.error'));
-      setSuccess(true);
-      onSaved();
-    } catch (e2) {
-      setErr(e2.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <form style={{ ...shared.card, marginBottom: 20 }} onSubmit={submit}>
-      <div style={{ ...styles.fieldLabel, fontSize: '0.95rem', color: colors.amber, marginBottom: 12 }}>
-        {t('signup.sectionTitle')}
-      </div>
-
-      <div style={{ marginBottom: 14 }}>
-        <div style={styles.fieldLabel}>{t('signup.yourName')}</div>
-        <select style={{ ...shared.input, width: '100%' }} value={controllerId} onChange={(e) => setControllerId(e.target.value)}>
-          <option value="">{t('signup.selectName')}</option>
-          {controllers.map((c) => (
-            <option key={c.id} value={c.id}>
-              {controllerName(c, isAdmin)} {c.rating ? `(${c.rating})` : ''}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div style={{ marginBottom: 14 }}>
-        <div style={styles.fieldLabel}>{t('signup.hoursLabel')}</div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('signup.hoursFrom')}</span>
-          <TimeField value={hoursStart} onChange={setHoursStart} />
-          <span style={{ color: colors.mutedDim, fontSize: '0.8rem' }}>{t('signup.hoursTo')}</span>
-          <TimeField value={hoursEnd} onChange={setHoursEnd} />
-          <span style={{ color: colors.mutedDim, fontSize: '0.7rem' }}>Z</span>
-        </div>
-      </div>
-
-      <div style={styles.signupChoicesRow}>
-        <div>
-          <div style={styles.fieldLabel}>{t('signup.choice', { n: 1 })}</div>
-          <PositionPicker positions={positions} value={choice1} onPick={setChoice1} t={t} fieldId="1" />
-        </div>
-        <div>
-          <div style={styles.fieldLabel}>{t('signup.choice', { n: 2 })}</div>
-          <PositionPicker positions={positions} value={choice2} onPick={setChoice2} t={t} fieldId="2" />
-        </div>
-        <div>
-          <div style={styles.fieldLabel}>{t('signup.choice', { n: 3 })}</div>
-          <PositionPicker positions={positions} value={choice3} onPick={setChoice3} t={t} fieldId="3" />
-        </div>
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        <div style={styles.fieldLabel}>{t('signup.notesLabel')}</div>
-        <textarea
-          style={{ ...shared.input, minHeight: 60, width: '100%', resize: 'vertical' }}
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-      </div>
-
-      {err && <p style={{ color: colors.red, fontSize: '0.85rem', marginTop: 10 }}>{err}</p>}
-      {success && !err && <p style={{ color: colors.green, fontSize: '0.85rem', marginTop: 10 }}>{t('signup.success')}</p>}
-
-      <div style={{ marginTop: 14 }}>
-        <button type="submit" style={shared.btnPrimary} disabled={saving}>
-          {saving ? t('signup.submitting') : t('signup.submit')}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-// Admin-only podgląd zgłoszeń — surowa lista, żeby admin miał czym się
-// kierować przy ręcznym przypisywaniu kontrolerów w sekcjach poniżej
-// (automatyczne dopasowanie to kolejny etap, patrz claude/feature-roadmap.md).
-function SignupsList({ signups, isAdmin, onDelete }) {
-  const { t } = useLang();
-  if (!signups) return null;
-
-  // Jedno zgłoszenie kontrolera to do 3 wierszy (priority 1-3). Grupujemy je
-  // z powrotem po kontrolerze, żeby lista czytała się jak zgłoszenia, a nie
-  // jak wiersze w bazie — i żeby „usuń" kasowało całe zgłoszenie naraz.
-  const byController = [];
-  const index = new Map();
-  for (const s of signups) {
-    const key = s.controller_id || s.controllers?.cid || s.id;
-    if (!index.has(key)) {
-      index.set(key, {
-        key,
-        controllerId: s.controller_id,
-        controller: s.controllers,
-        notes: s.notes,
-        from: s.preferred_time_start,
-        to: s.preferred_time_end,
-        picks: [],
-      });
-      byController.push(index.get(key));
-    }
-    const entry = index.get(key);
-    entry.picks.push(s);
-    if (!entry.notes && s.notes) entry.notes = s.notes;
-  }
-  for (const entry of byController) entry.picks.sort((a, b) => (a.priority || 0) - (b.priority || 0));
-
-  return (
-    <div style={{ ...shared.card, marginBottom: 20 }}>
-      <div style={{ ...styles.fieldLabel, fontSize: '0.95rem', marginBottom: 10 }}>{t('signup.adminListTitle')}</div>
-      {byController.length === 0 ? (
-        <p style={{ color: colors.mutedDim, fontSize: '0.85rem', margin: 0 }}>{t('signup.noSignups')}</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {byController.map((entry) => (
-            <div key={entry.key} style={styles.signupRow}>
-              <div style={{ flex: 1, minWidth: 0, fontSize: '0.88rem', color: colors.text }}>
-                <span style={{ fontWeight: 700 }}>{entry.controller?.name || entry.controller?.cid || '—'}</span>{' '}
-                {entry.picks.map((s) => (
-                  <span key={s.id}>
-                    <span style={{ color: colors.mutedDim }}>{t('signup.priorityShort', { n: s.priority })}</span>{' '}
-                    <span style={{ color: colors.blue }}>
-                      {s.preferred_position?.callsign || t('signup.anyPosition')}
-                    </span>{' '}
-                  </span>
-                ))}
-                {entry.from && entry.to && (
-                  <span style={{ color: colors.mutedDim, fontFamily: 'monospace' }}>
-                    · {entry.from.slice(0, 5)}-{entry.to.slice(0, 5)}z
-                  </span>
-                )}
-                {entry.notes && <span style={{ color: colors.mutedDim }}> · {entry.notes}</span>}
-              </div>
-              {isAdmin && entry.controllerId && (
-                <button
-                  style={styles.signupRemoveBtn}
-                  onClick={() => onDelete(entry)}
-                  title={t('signup.removeSignup')}
-                >
-                  {t('signup.removeSignup')}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
 const styles = {
-  signupChoicesRow: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 },
   topGrid: { display: 'grid', gridTemplateColumns: 'minmax(0, 440px) 1fr', gap: 28, marginBottom: 28 },
   banner: { width: '100%', aspectRatio: '16 / 9', objectFit: 'cover', borderRadius: 12, background: colors.cardAlt, boxShadow: '0 1px 3px rgba(16, 24, 40, 0.06)' },
   bannerPlaceholder: {
@@ -907,25 +684,6 @@ const styles = {
   summaryGroup: { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' },
   controlsRow: { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
   toggleActive: { borderColor: colors.amber, color: colors.amber },
-  signupRow: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 10,
-    padding: '6px 8px',
-    borderRadius: 8,
-    background: colors.cardAlt,
-  },
-  signupRemoveBtn: {
-    flexShrink: 0,
-    padding: '6px 12px',
-    borderRadius: 7,
-    border: `1px solid ${colors.red}`,
-    background: colors.redBg,
-    color: colors.red,
-    fontWeight: 700,
-    fontSize: '0.78rem',
-    cursor: 'pointer',
-  },
   shortDescription: {
     color: colors.text,
     fontSize: '1rem',

@@ -4,7 +4,6 @@ import { postToDiscord, TARGETS } from '../../../lib/discord';
 import {
   announceEvent,
   remindEvent,
-  remindSignups,
   sendSchedule,
   sendMonthlySummary,
   sendPeriodSummary,
@@ -77,9 +76,9 @@ export default async function handler(req, res) {
         result = await remindEvent(supabase, event_id, Number(days) || 1, { force });
         break;
       case 'signups':
-        if (!event_id) return res.status(400).json({ error: 'Brak event_id.' });
-        result = await remindSignups(supabase, event_id, Number(days) || 5, { force });
-        break;
+        // Wyłączone razem z całą funkcją zapisów (2026-09-03) — nie ma już
+        // formularza, do którego to przypomnienie miałoby prowadzić.
+        return res.status(410).json({ error: 'Przypomnienia o zapisach są wyłączone — funkcja zapisów jest nieaktywna.' });
       case 'schedule':
         if (!event_id) return res.status(400).json({ error: 'Brak event_id.' });
         // Uwagi zapisujemy przy evencie, zanim pójdzie wysyłka — dzięki temu

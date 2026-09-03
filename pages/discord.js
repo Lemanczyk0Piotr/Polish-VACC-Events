@@ -232,7 +232,8 @@ export default function DiscordPanel() {
             <div style={{ ...styles.sectionTitle, marginTop: 18 }}>{t('discord.rules')}</div>
             <ul style={styles.rulesList}>
               <li>{t('discord.rulesReminder', { d: status.reminder_days })}</li>
-              <li>{t('discord.rulesSignups', { d: status.signup_reminder_days })}</li>
+              {/* rulesSignups usunięte razem z automatycznymi przypomnieniami
+                  o zapisach (2026-09-03) — funkcja zapisów jest wyłączona. */}
               <li>{t('discord.rulesSchedule', { d: status.schedule_days_before })}</li>
               <li>{t('discord.rulesSummary')}</li>
               <li>{t('discord.rulesHour', { h: status.reminder_hour })}</li>
