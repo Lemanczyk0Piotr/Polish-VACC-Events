@@ -130,7 +130,7 @@ export default function Home() {
 
   return (
     <Layout>
-      <div style={styles.grid}>
+      <div className="pv-home-grid" style={styles.grid}>
         <div>
           {active ? (
             <div style={styles.mainCard}>
@@ -189,7 +189,7 @@ export default function Home() {
           )}
 
           {isAdmin && (
-            <div style={styles.statsRow}>
+            <div className="pv-stats-row" style={styles.statsRow}>
               <StatTile label={t('home.statActive')} value={activeCount} />
               <StatTile label={t('home.statRegistered')} value={registeredCount} />
               <StatTile label={t('home.statEvents')} value={totalEvents} />
@@ -239,6 +239,19 @@ export default function Home() {
           </aside>
         </div>
       </div>
+
+      <style jsx global>{`
+        @media (max-width: 860px) {
+          .pv-home-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 420px) {
+          .pv-stats-row {
+            grid-template-columns: repeat(2, 1fr) !important;
+          }
+        }
+      `}</style>
     </Layout>
   );
 }

@@ -82,6 +82,11 @@ export default function Document() {
   return (
     <Html lang="pl">
       <Head>
+        {/* Bez tego mobilne przeglądarki renderują stronę tak, jakby ekran
+            miał ~980px szerokości i dopiero skalują ją w dół — wygląda jak
+            pomniejszony desktop zamiast realnie się dopasować, a media
+            queries poniżej i tak nie zadziałałyby poprawnie. */}
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link

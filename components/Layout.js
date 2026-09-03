@@ -105,17 +105,17 @@ export default function Layout({ children }) {
 
   return (
     <div style={styles.page}>
-      <header style={styles.topbar}>
-        <Link href="/" style={styles.brand} onClick={() => setMobileOpen(false)}>
+      <header className="pv-topbar" style={styles.topbar}>
+        <Link href="/" className="pv-brand" style={styles.brand} onClick={() => setMobileOpen(false)}>
           <span style={styles.brandMark}>
             <PlaneIcon />
           </span>
-          <span style={styles.brandText}>
+          <span className="pv-brand-text" style={styles.brandText}>
             <span style={styles.brandTitle}>POLISH VACC</span>
-            <span style={styles.brandSub}>Events</span>
+            <span className="pv-brand-sub" style={styles.brandSub}>Events</span>
           </span>
         </Link>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className="pv-topbar-actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <button
             style={styles.langToggle}
             onClick={() => setLang(lang === 'pl' ? 'en' : 'pl')}
@@ -187,7 +187,7 @@ export default function Layout({ children }) {
 
         {mobileOpen && <div className="sidebar-scrim" style={styles.scrim} onClick={() => setMobileOpen(false)} />}
 
-        <main style={styles.main}>{children}</main>
+        <main className="pv-main" style={styles.main}>{children}</main>
       </div>
 
       <footer style={styles.footer}>
@@ -228,6 +228,28 @@ export default function Layout({ children }) {
             box-shadow: 2px 0 18px rgba(20, 12, 14, 0.18);
           }
           .app-sidebar.open { transform: translateX(0); }
+        }
+        /* Zawartość stron ma spory poziomy padding zaprojektowany pod
+           desktop (28px/32px) — na telefonie zjada zbyt dużo z i tak wąskiego
+           ekranu. Ta sama sztuczka co .app-sidebar: klasa w CSS bije inline
+           style tylko wewnątrz media query, więc desktop zostaje
+           nietknięty. */
+        @media (max-width: 640px) {
+          .pv-main { padding: 18px 14px !important; }
+          .pv-topbar { padding: 0 12px !important; }
+          .pv-topbar-actions { gap: 5px !important; }
+          /* "Events" pod "POLISH VACC" jest tylko ozdobą marki — na wąskim
+             ekranie ustępuje miejsca przyciskom po prawej, które są
+             funkcjonalne (język/motyw/admin/menu). */
+          .pv-brand-sub { display: none; }
+        }
+        /* Bardzo wąskie telefony (iPhone SE i podobne, ~320-360px) — sam
+           napis marki + cztery przyciski akcji (język, motyw, kłódka/badge
+           admina, hamburger) potrafią się już nie zmieścić w jednej linii.
+           Skracamy nazwę marki zamiast pozwolić jej wypchnąć przyciski poza
+           ekran. */
+        @media (max-width: 380px) {
+          .pv-brand-text { display: none; }
         }
       `}</style>
 

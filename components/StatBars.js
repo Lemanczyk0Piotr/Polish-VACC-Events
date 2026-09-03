@@ -51,8 +51,10 @@ export default function StatBars({ items, formatValue = (v) => String(v), emptyT
 
 const styles = {
   wrap: { display: 'grid', gap: 10 },
-  row: { display: 'flex', alignItems: 'center', gap: 12 },
-  labelCol: { width: 210, flexShrink: 0, minWidth: 0 },
+  row: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  // clamp() zamiast sztywnego px — na wąskich telefonach etykieta i wartość
+  // kurczą się razem z ekranem zamiast wypychać wiersz poza szerokość karty.
+  labelCol: { width: 'clamp(110px, 32vw, 210px)', flexShrink: 0, minWidth: 0 },
   label: {
     fontSize: '0.88rem',
     fontWeight: 600,
@@ -79,7 +81,7 @@ const styles = {
   // Zaokrąglony tylko koniec słupka — początek jest przyklejony do osi.
   bar: { height: '100%', borderRadius: '2px 4px 4px 2px' },
   value: {
-    width: 92,
+    width: 'clamp(56px, 16vw, 92px)',
     flexShrink: 0,
     textAlign: 'right',
     fontFamily: font.mono,

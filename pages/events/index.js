@@ -423,7 +423,7 @@ const styles = {
     boxShadow: '0 1px 2px rgba(16, 24, 40, 0.04)',
   }),
   thumb: {
-    width: 340,
+    width: 'min(340px, 100%)',
     aspectRatio: '16 / 9',
     objectFit: 'cover',
     borderRadius: 8,

@@ -177,7 +177,11 @@ export default function ScheduleGrid({ event, assignments }) {
 }
 
 const styles = {
-  wrap: { overflowX: 'hidden' },
+  // Na wąskich ekranach (telefon) trzymamy minimalną szerokość, żeby wykres
+  // nie ściskał się do nieczytelności — rodzic (pages/events/[id].js) ma
+  // overflowX: 'auto', więc zamiast ściskania po prostu pojawia się scroll
+  // poziomy tego jednego elementu.
+  wrap: { minWidth: 480 },
   axisRow: { display: 'flex', marginBottom: 10 },
   labelCol: { width: 150, flexShrink: 0 },
   axisEventTitle: {
