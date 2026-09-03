@@ -22,6 +22,12 @@ const EXTERNAL_LINKS = [
   { label: 'MyVATSIM', href: 'https://my.vatsim.net/home' },
 ];
 
+// Linktree zbierający wszystkie linki PLVACC Events (social media, zgłaszanie
+// eventów, logo, prośby o obsadę ATC, feedback) — wyróżniony wizualnie
+// (zielony akcent + ikonka + opis) na prośbę admina, 2026-09-03, żeby nie
+// gubił się wśród zwykłych linków zewnętrznych.
+const LINKTREE_LINK = { label: 'Linktree', href: 'https://linktr.ee/plvaccevents' };
+
 function PlaneIcon({ size = 18, color = '#fff' }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -68,6 +74,24 @@ function LockIcon({ size = 15 }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <rect x="5" y="11" width="14" height="10" rx="2" fill="#fff" />
       <path d="M8 11V7.5a4 4 0 0 1 8 0V11" stroke="#fff" strokeWidth="2" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// Prosta ikonka "drzewka linków" — odróżnia Linktree od zwykłej strzałki ↗
+// przy pozostałych linkach zewnętrznych.
+function LinktreeIcon({ size = 14, color }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="4" r="2.4" fill={color} />
+      <circle cx="5" cy="20" r="2.4" fill={color} />
+      <circle cx="19" cy="20" r="2.4" fill={color} />
+      <path
+        d="M12 6.4V12M12 12L5 17.8M12 12l7 5.8"
+        stroke={color}
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -177,6 +201,22 @@ export default function Layout({ children }) {
 
           <div style={{ ...styles.sidebarSectionLabel, marginTop: 26 }}>{t('nav.externalLinks')}</div>
           <nav style={styles.navCol}>
+            {/* Linktree — wyróżniony (zielona ramka/ikonka + krótki opis
+                zawartości pod spodem), żeby nie ginął wśród zwykłych linków. */}
+            <a
+              href={LINKTREE_LINK.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.linktreeLink}
+              title={t('nav.linktreeDesc')}
+            >
+              <span style={styles.linktreeLinkTop}>
+                <LinktreeIcon color={colors.green} />
+                <span>{LINKTREE_LINK.label}</span>
+                <span style={styles.extArrow}>↗</span>
+              </span>
+              <span style={styles.linktreeLinkDesc}>{t('nav.linktreeDesc')}</span>
+            </a>
             {EXTERNAL_LINKS.map((l) => (
               <a key={l.label} href={l.href} target="_blank" rel="noopener noreferrer" style={styles.extLink}>
                 {l.label} <span style={styles.extArrow}>↗</span>
@@ -430,6 +470,34 @@ const styles = {
     gap: 4,
   },
   extArrow: { fontSize: '0.7rem', opacity: 0.8 },
+  // Wyróżniony wpis Linktree — zielony akcent (ramka + tło) i opis pod
+  // spodem, odróżniający go od zwykłych linków w extLink powyżej.
+  linktreeLink: {
+    padding: '9px 12px',
+    borderRadius: 7,
+    border: `1px solid ${colors.green}`,
+    background: colors.greenBg,
+    color: colors.green,
+    textDecoration: 'none',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 3,
+    marginBottom: 4,
+  },
+  linktreeLinkTop: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 5,
+    fontSize: '0.85rem',
+    fontWeight: 800,
+  },
+  linktreeLinkDesc: {
+    fontSize: '0.72rem',
+    fontWeight: 500,
+    color: colors.green,
+    opacity: 0.85,
+    lineHeight: 1.3,
+  },
   scrim: {
     position: 'fixed',
     inset: 0,
