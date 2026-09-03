@@ -87,6 +87,22 @@ export default function Document() {
             pomniejszony desktop zamiast realnie się dopasować, a media
             queries poniżej i tak nie zadziałałyby poprawnie. */}
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+        {/* Favicon — Next.js serwuje /public/favicon.ico automatycznie pod
+            /favicon.ico, ale jawne <link>-i są potrzebne, żeby przeglądarki
+            (zwłaszcza iOS/Android przy dodawaniu do ekranu głównego) w ogóle
+            sięgnęły po PNG-i w innych rozmiarach zamiast zgadywać. Wszystkie
+            rozmiary (public/favicon*.png, apple-touch-icon.png,
+            android-chrome-*.png, favicon.ico) wygenerowane z jednego logo
+            dostarczonego przez admina (2026-09-03) — żeby podmienić, wystarczy
+            podmienić te pliki w /public. */}
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+        <meta name="theme-color" content="#c8102e" />
+
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
