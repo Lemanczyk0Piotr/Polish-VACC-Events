@@ -210,6 +210,23 @@ export default function EventScheduler() {
     setScheduleModalOpen(true);
   };
 
+  // Link do publicznej, samoaktualizującej się rozpiski (pages/events/[id]/schedule.js)
+  // — dostępnej dla każdego, kto go ma, bez hasła admina (prośba admina,
+  // 2026-09-03). Ten sam link jest też automatycznie dołączany do rozpiski
+  // wysyłanej na Discorda (patrz lib/discord.js / buildScheduleEmbeds).
+  const copyScheduleLink = async () => {
+    const url = `${window.location.origin}/events/${id}/schedule`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert(t('scheduler.linkCopied'));
+    } catch (e) {
+      // Clipboard API bywa niedostępne (brak uprawnień, http zamiast https
+      // itp.) — awaryjnie pokazujemy link w prompt(), żeby dało się go
+      // skopiować ręcznie zamiast po prostu wyświetlić błąd.
+      window.prompt(t('scheduler.linkCopyFallback'), url);
+    }
+  };
+
   const sendScheduleToDiscord = async (force = false, remarks = remarksDraft) => {
     setScheduleModalOpen(false);
     setSendingSchedule(true);
@@ -398,6 +415,9 @@ export default function EventScheduler() {
             >
               {showGrid ? t('scheduler.hideGrid') : t('scheduler.showGrid')}
             </button>
+            <button style={shared.btnGhost} onClick={copyScheduleLink}>
+              {t('scheduler.copyLink')}
+            </button>
             <button style={shared.btnDanger} onClick={clearAll} disabled={!assignments || assignments.length === 0}>
               {t('scheduler.clearAll')}
             </button>
@@ -449,7 +469,7 @@ export default function EventScheduler() {
 
           {showGrid && (
             <div style={{ ...shared.card, marginBottom: 24, overflowX: 'auto' }}>
-              <ScheduleGrid event={event} assignments={assignments || []} />
+              <ScheduleGrid event={event} assignments={assignments || []} isAdmin={isAdmin} />
             </div>
           )}
 

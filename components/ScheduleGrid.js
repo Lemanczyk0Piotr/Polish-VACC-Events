@@ -1,5 +1,6 @@
 import { colors, positionTypeColor, positionTypeBarBg } from '../lib/theme';
 import { useLang } from '../lib/i18n';
+import { controllerName } from '../lib/identity';
 
 const TYPE_ORDER = ['CTR', 'APP', 'TWR', 'GND', 'DEL'];
 
@@ -16,7 +17,13 @@ function fmtUtc(date) {
 // at their actual shift time. Only positions with at least one assignment
 // are shown — unfilled stretches of a position's track are simply empty
 // space (a controller can start mid-event, matching how shifts are built).
-export default function ScheduleGrid({ event, assignments }) {
+//
+// `isAdmin` (domyślnie false — ta sama zasada "mniej danych domyślnie" co w
+// lib/identity.js) steruje, czy paski pokazują imię i nazwisko, czy sam CID.
+// Dawniej ten komponent renderował się WYŁĄCZNIE w panelu admina, więc zawsze
+// pokazywał pełne dane — teraz jest też osadzony na publicznej stronie
+// /events/[id]/schedule, więc granica prywatności musi obowiązywać i tutaj.
+export default function ScheduleGrid({ event, assignments, isAdmin = false }) {
   const { t } = useLang();
 
   if (!event.event_date || !event.time_start || !event.time_end) {
@@ -136,7 +143,7 @@ export default function ScheduleGrid({ event, assignments }) {
                       const e = new Date(a.time_end);
                       const left = pctOf(s);
                       const width = pctOf(e) - left;
-                      const studentName = a.student?.name;
+                      const studentName = a.student ? controllerName(a.student, isAdmin) : null;
                       const prev = sorted[idx - 1];
                       const next = sorted[idx + 1];
                       const touchesPrev = prev && new Date(prev.time_end).getTime() === s.getTime();
@@ -156,7 +163,7 @@ export default function ScheduleGrid({ event, assignments }) {
                           }}
                         >
                           <div style={styles.barName}>
-                            {a.controllers?.name} {a.controllers?.rating}
+                            {controllerName(a.controllers, isAdmin)} {a.controllers?.rating}
                             {studentName ? `${t('grid.studentLabel')}${studentName}` : ''}
                           </div>
                           <div style={styles.barTime}>
