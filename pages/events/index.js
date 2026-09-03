@@ -167,7 +167,7 @@ export default function Events() {
                 {ev.notes && <div style={styles.cardNotes}>{ev.notes}</div>}
               </div>
               <div style={styles.cardActions}>
-                {ev.kind === 'event' && (
+                {ev.kind === 'event' && isAdmin && (
                   <>
                     <Link href={`/events/${ev.id}`} style={styles.scheduleBtn}>
                       {t('events.signups')}
