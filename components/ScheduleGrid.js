@@ -43,9 +43,18 @@ export default function ScheduleGrid({ event, assignments, isAdmin = false }) {
     );
   }
 
-  let axisStart = new Date(`${event.event_date}T${event.time_start}Z`);
-  let axisEnd = new Date(`${event.event_date}T${event.time_end}Z`);
-  if (axisEnd <= axisStart) axisEnd = new Date(axisEnd.getTime() + 24 * 3600 * 1000);
+  // Granice "całego czasu eventu" — NIE rozciągane przez zmiany, które
+  // zaczynają się wcześniej albo kończą później niż sam event (to robi
+  // dopiero axisStart/axisEnd poniżej, do rysowania osi). Używane niżej do
+  // wykrycia, czy jakaś pozycja ma pustą przerwę przed pierwszą albo po
+  // ostatniej zmianie — wtedy dorysowujemy tam szary kafelek "BLANK"
+  // (prośba admina, 2026-09-03).
+  const eventStart = new Date(`${event.event_date}T${event.time_start}Z`);
+  let eventEnd = new Date(`${event.event_date}T${event.time_end}Z`);
+  if (eventEnd <= eventStart) eventEnd = new Date(eventEnd.getTime() + 24 * 3600 * 1000);
+
+  let axisStart = new Date(eventStart);
+  let axisEnd = new Date(eventEnd);
 
   for (const a of withTimes) {
     const s = new Date(a.time_start);
@@ -138,7 +147,19 @@ export default function ScheduleGrid({ event, assignments, isAdmin = false }) {
                     const sorted = [...p.items].sort(
                       (a, b) => new Date(a.time_start).getTime() - new Date(b.time_start).getTime()
                     );
-                    return sorted.map((a, idx) => {
+                    const GAP = 20; // total px between two touching tiles (zmiana albo BLANK)
+
+                    // Czy ta pozycja ma pustą przerwę przed pierwszą i/albo
+                    // po ostatniej zmianie względem całego czasu eventu —
+                    // decyduje, czy pierwszy/ostatni prawdziwy pasek dostaje
+                    // inset po tej stronie (tak jakby sąsiadował z kolejną
+                    // "zmianą", tylko że to szary kafelek BLANK).
+                    const firstStart = new Date(sorted[0].time_start);
+                    const lastEnd = new Date(sorted[sorted.length - 1].time_end);
+                    const hasLeadingBlank = firstStart.getTime() > eventStart.getTime();
+                    const hasTrailingBlank = lastEnd.getTime() < eventEnd.getTime();
+
+                    const bars = sorted.map((a, idx) => {
                       const s = new Date(a.time_start);
                       const e = new Date(a.time_end);
                       const left = pctOf(s);
@@ -148,9 +169,9 @@ export default function ScheduleGrid({ event, assignments, isAdmin = false }) {
                       const next = sorted[idx + 1];
                       const touchesPrev = prev && new Date(prev.time_end).getTime() === s.getTime();
                       const touchesNext = next && new Date(next.time_start).getTime() === e.getTime();
-                      const GAP = 20; // total px between two touching shifts
-                      const leftInset = touchesPrev ? GAP / 2 : 0;
-                      const rightInset = touchesNext ? GAP / 2 : 0;
+                      const leftInset = touchesPrev || (idx === 0 && hasLeadingBlank) ? GAP / 2 : 0;
+                      const rightInset =
+                        touchesNext || (idx === sorted.length - 1 && hasTrailingBlank) ? GAP / 2 : 0;
                       return (
                         <div
                           key={a.id}
@@ -172,6 +193,35 @@ export default function ScheduleGrid({ event, assignments, isAdmin = false }) {
                         </div>
                       );
                     });
+
+                    const blanks = [];
+                    if (hasLeadingBlank) {
+                      blanks.push({ key: 'blank-start', start: eventStart, end: firstStart, insetRight: true });
+                    }
+                    if (hasTrailingBlank) {
+                      blanks.push({ key: 'blank-end', start: lastEnd, end: eventEnd, insetLeft: true });
+                    }
+                    const blankTiles = blanks.map((b) => {
+                      const left = pctOf(b.start);
+                      const width = pctOf(b.end) - left;
+                      const leftInset = b.insetLeft ? GAP / 2 : 0;
+                      const rightInset = b.insetRight ? GAP / 2 : 0;
+                      return (
+                        <div
+                          key={b.key}
+                          style={{
+                            ...styles.bar,
+                            ...styles.blankBar,
+                            left: `calc(${left}% + ${leftInset}px)`,
+                            width: `calc(${width}% - ${leftInset + rightInset}px)`,
+                          }}
+                        >
+                          <div style={styles.blankLabel}>{t('grid.blankLabel')}</div>
+                        </div>
+                      );
+                    });
+
+                    return [...bars, ...blankTiles];
                   })()}
                 </div>
               </div>
@@ -258,4 +308,27 @@ const styles = {
     maxWidth: '100%',
   },
   barTime: { color: '#fff', fontSize: '0.78rem', fontFamily: 'monospace', opacity: 0.85 },
+  // Kafelek dla przerwy przed pierwszą / po ostatniej zmianie na pozycji,
+  // kiedy obsada nie zajmuje całego czasu eventu (prośba admina, 2026-09-03).
+  blankBar: {
+    // colors.border (nie cardAlt) — cardAlt to już tło samego toru, więc
+    // kafelek byłby na nim niewidoczny; ma być wyraźnie szary.
+    background: colors.border,
+    // Pełny shorthand (nie osobne borderStyle/borderColor) — inaczej
+    // borderStyle: 'dashed' ustawiłby styl WSZYSTKICH 4 boków (łącznie z
+    // lewym/prawym, które reszta paska celowo zostawia bez obramowania),
+    // bo to skrót obejmujący cały border-style.
+    borderTop: `1px dashed ${colors.mutedDim}`,
+    borderBottom: `1px dashed ${colors.mutedDim}`,
+  },
+  blankLabel: {
+    color: colors.mutedDim,
+    fontWeight: 700,
+    fontSize: '0.85rem',
+    letterSpacing: '0.03em',
+    whiteSpace: 'nowrap',
+    textOverflow: 'ellipsis',
+    overflow: 'hidden',
+    maxWidth: '100%',
+  },
 };
