@@ -131,7 +131,7 @@ export default function EventScheduler() {
         })()
       : 180;
 
-  const addAssignment = async (positionId, controllerId, studentId, startHHMM, endHHMM) => {
+  const addAssignment = async (positionId, controllerId, studentId, startHHMM, endHHMM, isFree = false) => {
     if (!event.event_date) {
       alert(t('scheduler.noDateAlert'));
       return;
@@ -163,8 +163,9 @@ export default function EventScheduler() {
       body: JSON.stringify({
         event_id: id,
         position_id: positionId,
-        controller_id: controllerId,
-        student_id: studentId || null,
+        controller_id: isFree ? null : controllerId,
+        student_id: isFree ? null : studentId || null,
+        is_free: isFree,
         time_start: startIso,
         time_end: endIso,
       }),
@@ -269,7 +270,10 @@ export default function EventScheduler() {
   };
 
   const exportBookings = async () => {
-    const staffedPositions = new Set((assignments || []).map((a) => a.position_id));
+    // Wiersze "- - - FREE - - -" nie liczą się jako obsada — pozycja z samym
+    // FREE nie dostaje bookingu na CoreVACC (patrz pages/api/bookings/export.js),
+    // więc licznik w oknie potwierdzenia musi się z tym zgadzać.
+    const staffedPositions = new Set((assignments || []).filter((a) => !a.is_free).map((a) => a.position_id));
     if (staffedPositions.size === 0) {
       alert(t('scheduler.exportBookingsNone'));
       return;
@@ -384,12 +388,18 @@ export default function EventScheduler() {
               return (
                 <div key={type} style={styles.summaryGroup}>
                   <span style={{ color: positionTypeColor[type], fontWeight: 700, fontSize: '0.82rem' }}>{type}</span>
-                  {list.map((a) => (
-                    <span key={a.id} style={{ color: colors.text, fontSize: '0.88rem' }}>
-                      {controllerName(a.controllers, isAdmin)} ({a.controllers?.rating})
-                      {a.student ? `${t('scheduler.studentLabel')}${controllerName(a.student, isAdmin)}` : ''}
-                    </span>
-                  ))}
+                  {list.map((a) =>
+                    a.is_free ? (
+                      <span key={a.id} style={{ color: colors.mutedDim, fontSize: '0.88rem', fontStyle: 'italic' }}>
+                        {t('grid.blankLabel')}
+                      </span>
+                    ) : (
+                      <span key={a.id} style={{ color: colors.text, fontSize: '0.88rem' }}>
+                        {controllerName(a.controllers, isAdmin)} ({a.controllers?.rating})
+                        {a.student ? `${t('scheduler.studentLabel')}${controllerName(a.student, isAdmin)}` : ''}
+                      </span>
+                    )
+                  )}
                 </div>
               );
             })}
@@ -510,10 +520,18 @@ export default function EventScheduler() {
                         {posAssignments.map((a) => (
                           <div key={a.id} style={styles.assignedRow}>
                             <div>
-                              <span style={{ color: colors.text, fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
-                              <span style={{ color: colors.blue, fontSize: '0.85rem' }}>{a.controllers?.rating}</span>
-                              {a.student?.name && (
-                                <span style={{ color: colors.purple, fontSize: '0.85rem' }}>{t('scheduler.studentLabel')}{a.student.name}</span>
+                              {a.is_free ? (
+                                <span style={{ color: colors.mutedDim, fontWeight: 600, fontStyle: 'italic' }}>
+                                  {t('grid.blankLabel')}
+                                </span>
+                              ) : (
+                                <>
+                                  <span style={{ color: colors.text, fontWeight: 600 }}>{a.controllers?.name}</span>{' '}
+                                  <span style={{ color: colors.blue, fontSize: '0.85rem' }}>{a.controllers?.rating}</span>
+                                  {a.student?.name && (
+                                    <span style={{ color: colors.purple, fontSize: '0.85rem' }}>{t('scheduler.studentLabel')}{a.student.name}</span>
+                                  )}
+                                </>
                               )}
                               <div style={{ fontSize: '0.8rem', color: colors.mutedDim }}>
                                 {a.time_start && a.time_end
@@ -534,9 +552,11 @@ export default function EventScheduler() {
                             controllers={controllers ? sortControllers(controllers) : []}
                             defaultStart={defaultStartHHMM}
                             defaultEnd={defaultEndHHMM}
+                            eventStart={event.time_start ? event.time_start.slice(0, 5) : null}
+                            eventEnd={event.time_end ? event.time_end.slice(0, 5) : null}
                             onCancel={() => setAddingFor(null)}
-                            onAdd={(controllerId, studentId, start, end) =>
-                              addAssignment(position.id, controllerId, studentId, start, end)
+                            onAdd={(controllerId, studentId, start, end, isFree) =>
+                              addAssignment(position.id, controllerId, studentId, start, end, isFree)
                             }
                           />
                         ) : (
@@ -564,15 +584,23 @@ export default function EventScheduler() {
   );
 }
 
-function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, onAdd }) {
+// Wartość-znacznik w <select>, żeby wybór "- - - FREE - - -" dało się
+// odróżnić od pustego "— wybierz kontrolera —" (obie mają inny sens: pusta to
+// "jeszcze nic nie wybrano", FREE to świadoma decyzja "ta pozycja stoi pusta
+// w tym przedziale"). Sam string nigdy nie trafia do API — addAssignment
+// zamienia go na controller_id: null + is_free: true.
+const FREE_VALUE = '__FREE__';
+
+function AddControllerForm({ controllers, defaultStart, defaultEnd, eventStart, eventEnd, onCancel, onAdd }) {
   const { t } = useLang();
   const [controllerId, setControllerId] = useState('');
   const [studentId, setStudentId] = useState('');
   const [start, setStart] = useState(defaultStart);
   const [end, setEnd] = useState(defaultEnd);
 
+  const isFree = controllerId === FREE_VALUE;
   const selected = controllers.find((c) => c.id === controllerId);
-  const isMentor = !!selected?.is_mentor;
+  const isMentor = !isFree && !!selected?.is_mentor;
 
   return (
     <div style={styles.addForm}>
@@ -585,6 +613,7 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
         }}
       >
         <option value="">{t('scheduler.selectController')}</option>
+        <option value={FREE_VALUE}>{t('scheduler.freeOption')}</option>
         {controllers.map((c) => (
           <option key={c.id} value={c.id}>
             {c.name} {c.rating ? `(${c.rating})` : ''}
@@ -606,18 +635,33 @@ function AddControllerForm({ controllers, defaultStart, defaultEnd, onCancel, on
         </select>
       )}
 
-      <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <TimeField value={start} onChange={setStart} />
         <span style={{ color: colors.mutedDim }}>–</span>
         <TimeField value={end} onChange={setEnd} />
         <span style={{ color: colors.mutedDim, fontSize: '0.7rem' }}>Z</span>
+        {/* Skrót "cały okres" — tylko przy FREE, bo tylko tam ma sens
+            jednym kliknięciem oznaczyć całą pozycję jako wolną na czas
+            całego wydarzenia zamiast ręcznie przepisywać godziny eventu. */}
+        {isFree && eventStart && eventEnd && (
+          <button
+            type="button"
+            style={styles.wholePeriodBtn}
+            onClick={() => {
+              setStart(eventStart);
+              setEnd(eventEnd);
+            }}
+          >
+            {t('scheduler.freeWholePeriod')}
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
         <button
           style={{ ...shared.btnPrimary, marginLeft: 'auto' }}
           disabled={!controllerId}
-          onClick={() => onAdd(controllerId, studentId, start, end)}
+          onClick={() => onAdd(isFree ? null : controllerId, isFree ? null : studentId, start, end, isFree)}
         >
           {t('scheduler.add')}
         </button>
@@ -768,4 +812,14 @@ const styles = {
     cursor: 'pointer',
   },
   addForm: { marginTop: 8, padding: 10, borderRadius: 8, background: colors.cardAlt },
+  wholePeriodBtn: {
+    padding: '6px 10px',
+    borderRadius: 6,
+    border: `1px dashed ${colors.border}`,
+    background: 'transparent',
+    color: colors.muted,
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+  },
 };

@@ -22,9 +22,16 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { event_id, position_id, controller_id, student_id, time_start, time_end, session_minutes } = req.body || {};
+  const { event_id, position_id, controller_id, student_id, time_start, time_end, session_minutes, is_free } =
+    req.body || {};
 
-  if (!event_id || !position_id || !controller_id) {
+  // Slot "- - - FREE - - -": zamiast prawdziwego kontrolera, tylko flaga —
+  // controller_id/student_id MUSZĄ wtedy zostać null (pilnuje tego też CHECK
+  // w bazie, ale walidacja tutaj daje czytelny komunikat błędu zamiast
+  // surowego wyjątku z Postgresa).
+  const isFree = Boolean(is_free);
+
+  if (!event_id || !position_id || (!isFree && !controller_id)) {
     return res.status(400).json({ error: 'event_id, position_id i controller_id są wymagane' });
   }
 
@@ -37,8 +44,9 @@ export default async function handler(req, res) {
   const row = {
     event_id,
     position_id,
-    controller_id,
-    student_id: student_id || null,
+    controller_id: isFree ? null : controller_id,
+    student_id: isFree ? null : student_id || null,
+    is_free: isFree,
     time_start: time_start || null,
     time_end: time_end || null,
     sessions: 1,

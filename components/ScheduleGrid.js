@@ -172,6 +172,27 @@ export default function ScheduleGrid({ event, assignments, isAdmin = false }) {
                       const leftInset = touchesPrev || (idx === 0 && hasLeadingBlank) ? GAP / 2 : 0;
                       const rightInset =
                         touchesNext || (idx === sorted.length - 1 && hasTrailingBlank) ? GAP / 2 : 0;
+                      // Prawdziwy wiersz "- - - FREE - - -" (a.is_free) —
+                      // administrator wybrał go świadomie zamiast kontrolera,
+                      // więc dostaje ten sam szary/kreskowany wygląd co
+                      // auto-wykryte przerwy na brzegach (hasLeadingBlank /
+                      // hasTrailingBlank), tylko że może stać w DOWOLNYM
+                      // miejscu — nawet między dwiema prawdziwymi zmianami.
+                      if (a.is_free) {
+                        return (
+                          <div
+                            key={a.id}
+                            style={{
+                              ...styles.bar,
+                              ...styles.blankBar,
+                              left: `calc(${left}% + ${leftInset}px)`,
+                              width: `calc(${width}% - ${leftInset + rightInset}px)`,
+                            }}
+                          >
+                            <div style={styles.blankLabel}>{t('grid.blankLabel')}</div>
+                          </div>
+                        );
+                      }
                       return (
                         <div
                           key={a.id}

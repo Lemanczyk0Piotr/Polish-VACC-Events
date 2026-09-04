@@ -182,12 +182,18 @@ export default function EventStats() {
                       <span style={styles.shiftTime}>
                         {it.from}–{it.to}z
                       </span>
-                      <span style={{ flex: 1, minWidth: 0 }}>
-                        {controllerLabel(it.controller, isAdmin)}
-                        {it.student ? ` ${t('stats.studentLabel')} ${controllerLabel(it.student, isAdmin)}` : ''}
+                      <span style={{ flex: 1, minWidth: 0, ...(it.isFree ? { color: colors.mutedDim, fontStyle: 'italic' } : {}) }}>
+                        {it.isFree ? (
+                          t('grid.blankLabel')
+                        ) : (
+                          <>
+                            {controllerLabel(it.controller, isAdmin)}
+                            {it.student ? ` ${t('stats.studentLabel')} ${controllerLabel(it.student, isAdmin)}` : ''}
+                          </>
+                        )}
                       </span>
                       <span style={{ color: colors.mutedDim, fontFamily: font.mono, fontSize: '0.78rem' }}>
-                        {fmtDuration(it.minutes)}
+                        {it.isFree ? '' : fmtDuration(it.minutes)}
                       </span>
                     </div>
                   ))}

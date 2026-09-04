@@ -80,14 +80,17 @@ export default async function handler(req, res) {
 
   const { data: assignments, error: assignErr } = await supabase
     .from('event_assignments')
-    .select('position_id, positions(callsign)')
+    .select('position_id, is_free, positions(callsign)')
     .eq('event_id', event_id);
   if (assignErr) return res.status(500).json({ error: assignErr.message });
 
   // Jedna pozycja = jeden booking, bez względu na to ilu kontrolerów / w
-  // jakich godzinach na niej siedziało.
+  // jakich godzinach na niej siedziało. Wiersze "- - - FREE - - -" (is_free)
+  // NIE liczą się jako obsada — to świadomie pusty przedział, więc pozycja,
+  // która ma same takie wiersze, nie dostaje bookingu na CoreVACC.
   const positionsByCallsign = new Map();
   for (const a of assignments || []) {
+    if (a.is_free) continue;
     const callsign = a.positions?.callsign;
     if (callsign && !positionsByCallsign.has(callsign)) positionsByCallsign.set(callsign, true);
   }
