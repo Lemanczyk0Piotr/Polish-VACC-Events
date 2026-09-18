@@ -6,7 +6,9 @@ import { useLang } from '../lib/i18n';
 import { useAdminMode, adminFetch } from '../lib/adminMode';
 import { controllerName } from '../lib/identity';
 
-const ENDORSEMENT_OPTIONS = ['PE', 'S2-CE', 'S3-CE', 'C1-CE'];
+// Nazwy jak w PLVACC — synchronizacja nadpisuje tę kolumnę przy każdym
+// "Sync now", więc ręczna zmiana utrzyma się tylko do najbliższego syncu.
+const ENDORSEMENT_OPTIONS = ['S2-PE', 'S2-ME', 'S3-ME', 'C1-ME'];
 
 function formatRosterUntil(iso, lang) {
   if (!iso) return null;
@@ -45,7 +47,15 @@ export default function Roster() {
       const res = await adminFetch(password, '/api/sync/roster', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || t('roster.syncError'));
-      setSyncMsg(t('roster.syncSuccess', { n: data.synced, deactivated: data.deactivated || 0 }));
+      setSyncMsg(
+        t('roster.syncSuccess', {
+          n: data.synced,
+          deactivated: data.deactivated || 0,
+          // `null` (a nie 0) znaczy "endpoint endorsementów nie odpowiedział" —
+          // komunikat mówi wtedy, że uprawnienia zostały nietknięte.
+          endorsed: data.endorsed === undefined ? null : data.endorsed,
+        })
+      );
       loadControllers();
     } catch (err) {
       setSyncMsg(t('roster.syncErrorMsg', { msg: err.message }));
