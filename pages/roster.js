@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '../components/Layout';
 import { supabase } from '../lib/supabaseClient';
-import { colors, shared, RATING_RANK, endorsementBadges } from '../lib/theme';
+import { colors, shared, RATING_RANK, endorsementBadges, endorsementLabel } from '../lib/theme';
 import { useLang } from '../lib/i18n';
 import { useAdminMode, adminFetch } from '../lib/adminMode';
 import { controllerName } from '../lib/identity';
 
-// Nazwy jak w PLVACC — synchronizacja nadpisuje tę kolumnę przy każdym
-// "Sync now", więc ręczna zmiana utrzyma się tylko do najbliższego syncu.
+// WARTOŚCI zapisywane do bazy — nazwy PLVACC, bo synchronizacja nadpisuje tę
+// kolumnę przy każdym "Sync now" i musi się z nimi zgadzać. Na ekranie
+// pokazujemy je przez endorsementLabel() jako *-CE.
+// (Ręczna zmiana i tak utrzyma się tylko do najbliższego syncu.)
 const ENDORSEMENT_OPTIONS = ['S2-PE', 'S2-ME', 'S3-ME', 'C1-ME'];
 
 function formatRosterUntil(iso, lang) {
@@ -272,7 +274,7 @@ function EditControllerModal({ controller, onClose, onSaved }) {
             {ENDORSEMENT_OPTIONS.map((tag) => (
               <label key={tag} style={styles.toggleRow}>
                 <input type="checkbox" checked={endorsements.includes(tag)} onChange={() => toggleEndorsement(tag)} />
-                <span>{tag}</span>
+                <span>{endorsementLabel(tag)}</span>
               </label>
             ))}
           </div>
