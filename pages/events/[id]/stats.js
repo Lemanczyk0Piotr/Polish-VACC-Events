@@ -58,16 +58,33 @@ export default function EventStats() {
 
   // Bez `doImport` endpoint czyta tylko pamięć podręczną — do Statsim idziemy
   // wyłącznie po kliknięciu przycisku przez administratora.
-  const loadTraffic = (doImport = false) => {
+  // Każde zakończenie tego wywołania MUSI zmienić coś na ekranie. Pierwsza
+  // wersja czytała `r.json()` bez sprawdzania `r.ok`: przy 401 albo przy
+  // odpowiedzi, która nie jest JSON-em (np. strona błędu 404, gdy build jeszcze
+  // nie wyszedł), kończyło się cichym wyjściem i przycisk wyglądał jak martwy.
+  const loadTraffic = async (doImport = false) => {
     if (!id) return;
     setTrafficBusy(true);
     const url = `/api/statsim/${id}${doImport ? '?import=1' : ''}`;
-    const req = doImport ? adminFetch(password, url) : fetch(url);
-    req
-      .then((r) => r.json())
-      .then((d) => setTraffic(d))
-      .catch((e) => setTraffic({ error: e.message }))
-      .finally(() => setTrafficBusy(false));
+    try {
+      const res = doImport ? await adminFetch(password, url) : await fetch(url);
+      const raw = await res.text();
+      let data = null;
+      try {
+        data = JSON.parse(raw);
+      } catch (e) {
+        data = null;
+      }
+      if (!res.ok || !data) {
+        setTraffic({ error: data?.error || t('stats.trafficHttp', { status: res.status }) });
+      } else {
+        setTraffic(data);
+      }
+    } catch (e) {
+      setTraffic({ error: e.message });
+    } finally {
+      setTrafficBusy(false);
+    }
   };
 
   useEffect(() => {
@@ -244,15 +261,17 @@ export default function EventStats() {
         {!traffic ? (
           <p style={{ color: colors.muted, margin: 0 }}>{t('stats.loading')}</p>
         ) : traffic.missing ? (
-          <p style={{ color: colors.mutedDim, margin: 0 }}>
+          <p style={styles.trafficNotice}>
             {traffic.can_import === false ? t('stats.trafficNoKey') : t('stats.trafficNotImported')}
           </p>
         ) : traffic.unavailable === 'no-api-key' ? (
-          <p style={{ color: colors.mutedDim, margin: 0 }}>{t('stats.trafficNoKey')}</p>
+          <p style={styles.trafficNotice}>{t('stats.trafficNoKey')}</p>
         ) : traffic.error && !traffic.totals ? (
-          <p style={{ color: colors.red, margin: 0 }}>{t('stats.trafficFailed', { msg: traffic.error })}</p>
+          <p style={styles.trafficError}>{t('stats.trafficFailed', { msg: traffic.error })}</p>
+        ) : traffic.note === 'no-airports' || traffic.staffed === 0 ? (
+          <p style={styles.trafficNotice}>{t('stats.trafficNoAirports')}</p>
         ) : !traffic.totals || traffic.totals.movements === 0 ? (
-          <p style={{ color: colors.mutedDim, margin: 0 }}>{t('stats.trafficEmpty')}</p>
+          <p style={styles.trafficNotice}>{t('stats.trafficEmpty')}</p>
         ) : (
           <>
             <div style={styles.tiles}>
@@ -300,6 +319,9 @@ export default function EventStats() {
             <div style={styles.trafficFoot}>
               {t('stats.trafficSource')}
               {traffic.stale ? ` · ${t('stats.trafficStale')}` : ''}
+              {traffic.fetched_at
+                ? ` · ${t('stats.trafficFetchedAt', { when: new Date(traffic.fetched_at).toLocaleString(lang === 'pl' ? 'pl-PL' : 'en-GB') })}`
+                : ''}
             </div>
           </>
         )}
@@ -388,6 +410,26 @@ const styles = {
     cursor: 'pointer',
   },
   trafficFoot: { marginTop: 14, fontSize: '0.75rem', color: colors.mutedDim },
+  // Komunikaty tej sekcji są w ramce, nie jako drobny szary tekst — inaczej
+  // admin klika „IMPORTUJ" i nie widzi, że cokolwiek się stało.
+  trafficNotice: {
+    margin: 0,
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: `1px solid ${colors.border}`,
+    background: colors.cardAlt,
+    color: colors.muted,
+    fontSize: '0.85rem',
+  },
+  trafficError: {
+    margin: 0,
+    padding: '10px 12px',
+    borderRadius: 8,
+    border: `1px solid ${colors.red}`,
+    background: colors.cardAlt,
+    color: colors.red,
+    fontSize: '0.85rem',
+  },
   sectionTitle: {
     fontFamily: font.mono,
     fontSize: '0.78rem',

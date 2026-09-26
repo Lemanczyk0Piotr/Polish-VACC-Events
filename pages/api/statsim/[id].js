@@ -27,7 +27,14 @@ export default async function handler(req, res) {
   }
 
   const supabase = getSupabaseAdmin();
-  const wantsImport = doImport === '1' && isAdminRequest(req);
+
+  // Kliknięcie „IMPORTUJ" z nieważnym hasłem MUSI dostać 401, a nie ciche
+  // zejście do trybu „czytaj pamięć podręczną" — inaczej przycisk wygląda,
+  // jakby nic nie robił (dokładnie tak to zgłosił admin).
+  if (doImport === '1' && !isAdminRequest(req)) {
+    return res.status(401).json({ error: 'Nieprawidłowe hasło administratora.' });
+  }
+  const wantsImport = doImport === '1';
 
   try {
     const { data: event, error: eventErr } = await supabase
@@ -66,7 +73,10 @@ export default async function handler(req, res) {
     if (rowsErr) throw new Error(rowsErr.message);
     const callsigns = (rows || []).map((r) => r.positions?.callsign).filter(Boolean);
 
-    const traffic = await fetchEventTraffic(event, callsigns);
+    // `staffed` wraca do przeglądarki, żeby dało się odróżnić „Statsim nie
+    // widział ruchu" od „na tym evencie nikt nie ma obsadzonej pozycji z
+    // lotniskiem" — bez tego oba stany wyglądają jak puste zero.
+    const traffic = { ...(await fetchEventTraffic(event, callsigns)), staffed: callsigns.length };
 
     await supabase
       .from('event_traffic')
