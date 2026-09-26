@@ -6,7 +6,7 @@ import StatBars from '../../../components/StatBars';
 import { supabase } from '../../../lib/supabaseClient';
 import { colors, shared, font, positionTypeColor, eventKindMeta, eventStatusMeta, formatDate, formatTimeZ } from '../../../lib/theme';
 import { useLang } from '../../../lib/i18n';
-import { useAdminMode } from '../../../lib/adminMode';
+import { useAdminMode, adminFetch } from '../../../lib/adminMode';
 import { aggregateStats, shiftsByPosition, fmtDuration, controllerLabel } from '../../../lib/statsAggregate';
 
 // Statystyki pojedynczego eventu — kto gdzie siedział, ile, jak wyglądała
@@ -22,12 +22,17 @@ export default function EventStats() {
   const { lang, t } = useLang();
   // Nazwiska tylko dla administratora — bez zalogowania widać sam CID,
   // dokładnie jak na /top-controllers.
-  const { isAdmin } = useAdminMode();
+  const { isAdmin, password } = useAdminMode();
 
   const [event, setEvent] = useState(null);
   const [assignments, setAssignments] = useState(null);
   const [signups, setSignups] = useState([]);
   const [error, setError] = useState(null);
+  // Ruch lotniczy ze Statsim — liczony po stronie serwera i cache'owany w
+  // tabeli event_traffic, bo klucz API jest sekretem i nie znamy limitów
+  // zewnętrznego API.
+  const [traffic, setTraffic] = useState(null);
+  const [trafficBusy, setTrafficBusy] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -49,6 +54,24 @@ export default function EventStats() {
       .select('controller_id, priority, controllers(id, name, cid)')
       .eq('event_id', id)
       .then(({ data }) => setSignups(data || []));
+  }, [id]);
+
+  // Bez `doImport` endpoint czyta tylko pamięć podręczną — do Statsim idziemy
+  // wyłącznie po kliknięciu przycisku przez administratora.
+  const loadTraffic = (doImport = false) => {
+    if (!id) return;
+    setTrafficBusy(true);
+    const url = `/api/statsim/${id}${doImport ? '?import=1' : ''}`;
+    const req = doImport ? adminFetch(password, url) : fetch(url);
+    req
+      .then((r) => r.json())
+      .then((d) => setTraffic(d))
+      .catch((e) => setTraffic({ error: e.message }))
+      .finally(() => setTrafficBusy(false));
+  };
+
+  useEffect(() => {
+    loadTraffic(false);
   }, [id]);
 
   const stats = useMemo(() => aggregateStats(assignments || []), [assignments]);
@@ -204,6 +227,84 @@ export default function EventStats() {
         </section>
       )}
 
+      <section style={{ ...shared.card, marginTop: 20 }}>
+        <div style={styles.headerRow}>
+          <div style={styles.sectionTitle}>{t('stats.trafficTitle')}</div>
+          {isAdmin && (
+            <button style={styles.importBtn} onClick={() => loadTraffic(true)} disabled={trafficBusy}>
+              {trafficBusy
+                ? t('stats.trafficBusy')
+                : traffic?.totals
+                  ? t('stats.trafficRefresh')
+                  : t('stats.trafficImport')}
+            </button>
+          )}
+        </div>
+
+        {!traffic ? (
+          <p style={{ color: colors.muted, margin: 0 }}>{t('stats.loading')}</p>
+        ) : traffic.missing ? (
+          <p style={{ color: colors.mutedDim, margin: 0 }}>
+            {traffic.can_import === false ? t('stats.trafficNoKey') : t('stats.trafficNotImported')}
+          </p>
+        ) : traffic.unavailable === 'no-api-key' ? (
+          <p style={{ color: colors.mutedDim, margin: 0 }}>{t('stats.trafficNoKey')}</p>
+        ) : traffic.error && !traffic.totals ? (
+          <p style={{ color: colors.red, margin: 0 }}>{t('stats.trafficFailed', { msg: traffic.error })}</p>
+        ) : !traffic.totals || traffic.totals.movements === 0 ? (
+          <p style={{ color: colors.mutedDim, margin: 0 }}>{t('stats.trafficEmpty')}</p>
+        ) : (
+          <>
+            <div style={styles.tiles}>
+              <Tile label={t('stats.trafficMovements')} value={traffic.totals.movements} />
+              <Tile label={t('stats.trafficDepartures')} value={traffic.totals.departures} />
+              <Tile label={t('stats.trafficArrivals')} value={traffic.totals.arrivals} />
+              <Tile label={t('stats.trafficFlights')} value={traffic.totals.flights} />
+            </div>
+
+            <div style={styles.twoCol}>
+              <div>
+                <div style={styles.subTitle}>{t('stats.trafficByAirport')}</div>
+                <StatBars
+                  items={traffic.airports.map((a) => ({
+                    key: a.icao,
+                    label: a.icao,
+                    sub: t('stats.trafficAirportSub', { dep: a.departures, arr: a.arrivals }),
+                    value: a.total,
+                  }))}
+                  emptyText={t('stats.noData')}
+                />
+              </div>
+              <div>
+                <div style={styles.subTitle}>{t('stats.trafficRoutes')}</div>
+                <StatBars
+                  items={traffic.routes.map((r) => ({ key: r.route, label: r.route, value: r.count }))}
+                  emptyText={t('stats.noData')}
+                />
+              </div>
+            </div>
+
+            {traffic.aircraft?.length > 0 && (
+              <div style={{ marginTop: 18 }}>
+                <div style={styles.subTitle}>{t('stats.trafficAircraft')}</div>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {traffic.aircraft.map((a) => (
+                    <span key={a.type} style={styles.chip}>
+                      {a.type} · {a.count}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={styles.trafficFoot}>
+              {t('stats.trafficSource')}
+              {traffic.stale ? ` · ${t('stats.trafficStale')}` : ''}
+            </div>
+          </>
+        )}
+      </section>
+
       {signupSummary.unassigned.length > 0 && (
         <section style={{ ...shared.card, marginTop: 20 }}>
           <div style={styles.sectionTitle}>{t('stats.unassignedTitle')}</div>
@@ -267,6 +368,26 @@ const styles = {
   tileValue: { fontSize: '1.5rem', fontWeight: 700, fontFamily: font.display, color: colors.text },
   tileSub: { fontSize: '0.75rem', color: colors.mutedDim, marginTop: 4 },
   twoCol: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 },
+  subTitle: {
+    fontFamily: font.mono,
+    fontSize: '0.72rem',
+    letterSpacing: '0.06em',
+    color: colors.mutedDim,
+    fontWeight: 700,
+    margin: '4px 0 10px',
+  },
+  importBtn: {
+    padding: '8px 14px',
+    borderRadius: 7,
+    border: `1px solid ${colors.amber}`,
+    background: colors.amberBg,
+    color: colors.amber,
+    fontWeight: 700,
+    fontSize: '0.78rem',
+    letterSpacing: '0.02em',
+    cursor: 'pointer',
+  },
+  trafficFoot: { marginTop: 14, fontSize: '0.75rem', color: colors.mutedDim },
   sectionTitle: {
     fontFamily: font.mono,
     fontSize: '0.78rem',
