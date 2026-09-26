@@ -16,6 +16,7 @@ const EDITABLE_FIELDS = [
   'short_description',
   'external_link',
   'schedule_remarks',
+  'statsim_airports',
 ];
 
 export default async function handler(req, res) {

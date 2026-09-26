@@ -39,7 +39,7 @@ export default async function handler(req, res) {
   try {
     const { data: event, error: eventErr } = await supabase
       .from('events')
-      .select('id, title, event_date, time_start, time_end, status')
+      .select('id, title, event_date, time_start, time_end, status, statsim_airports')
       .eq('id', id)
       .single();
     if (eventErr) throw new Error(eventErr.message);
@@ -63,19 +63,22 @@ export default async function handler(req, res) {
       return res.status(200).json({ unavailable: 'no-api-key' });
     }
 
-    // Lotniska bierzemy z pozycji faktycznie obsadzonych na tym evencie —
-    // liczenie ruchu na lotniskach, których nikt nie kontrolował, nie mówi
-    // nic o evencie.
-    const { data: rows, error: rowsErr } = await supabase
-      .from('event_assignments')
-      .select('positions(callsign)')
-      .eq('event_id', id);
-    if (rowsErr) throw new Error(rowsErr.message);
-    const callsigns = (rows || []).map((r) => r.positions?.callsign).filter(Boolean);
+    // Lotniska eventu wpisuje admin w polu `statsim_airports` — to one
+    // decydują, obsadzone czy nie. Callsigny obsadzonych pozycji czytamy tylko
+    // jako zapas dla eventów, przy których nikt tego pola nie wypełnił.
+    let callsigns = [];
+    if (!event?.statsim_airports) {
+      const { data: rows, error: rowsErr } = await supabase
+        .from('event_assignments')
+        .select('positions(callsign)')
+        .eq('event_id', id);
+      if (rowsErr) throw new Error(rowsErr.message);
+      callsigns = (rows || []).map((r) => r.positions?.callsign).filter(Boolean);
+    }
 
     // `staffed` wraca do przeglądarki, żeby dało się odróżnić „Statsim nie
-    // widział ruchu" od „na tym evencie nikt nie ma obsadzonej pozycji z
-    // lotniskiem" — bez tego oba stany wyglądają jak puste zero.
+    // widział ruchu" od „nie ma z czego liczyć" (brak wpisanych lotnisk i brak
+    // obsady) — bez tego oba stany wyglądają jak puste zero.
     const traffic = { ...(await fetchEventTraffic(event, callsigns)), staffed: callsigns.length };
 
     await supabase

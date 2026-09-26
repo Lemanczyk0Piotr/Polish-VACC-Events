@@ -318,6 +318,20 @@ export default function EventStats() {
 
             <div style={styles.trafficFoot}>
               {t('stats.trafficSource')}
+              {traffic.window
+                ? ` · ${t('stats.trafficWindow', {
+                    from: traffic.window.from.slice(11, 16),
+                    to: traffic.window.to.slice(11, 16),
+                  })}`
+                : ''}
+              {traffic.airports?.length
+                ? ` · ${t(
+                    traffic.airport_source === 'staffing'
+                      ? 'stats.trafficAirportsFromStaffing'
+                      : 'stats.trafficAirportsFromEvent',
+                    { list: traffic.airports.map((a) => a.icao).join(', ') }
+                  )}`
+                : ''}
               {traffic.stale ? ` · ${t('stats.trafficStale')}` : ''}
               {traffic.fetched_at
                 ? ` · ${t('stats.trafficFetchedAt', { when: new Date(traffic.fetched_at).toLocaleString(lang === 'pl' ? 'pl-PL' : 'en-GB') })}`

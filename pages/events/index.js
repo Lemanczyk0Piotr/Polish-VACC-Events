@@ -19,6 +19,7 @@ const EMPTY_FORM = {
   short_description: '',
   image_url: '',
   external_link: '',
+  statsim_airports: '',
 };
 
 export default function Events() {
@@ -235,6 +236,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
           short_description: initial.short_description || '',
           image_url: initial.image_url || '',
           external_link: initial.external_link || '',
+          statsim_airports: initial.statsim_airports || '',
         }
       : { ...EMPTY_FORM, kind: defaultKind }
   );
@@ -264,6 +266,7 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
       short_description: form.short_description || null,
       image_url: form.image_url || null,
       external_link: form.external_link || null,
+      statsim_airports: form.statsim_airports || null,
     };
     const url = initial ? `/api/events/${initial.id}` : '/api/events';
     const method = initial ? 'PUT' : 'POST';
@@ -348,6 +351,16 @@ function EventFormModal({ initial, defaultKind, onClose, onSaved }) {
 
         <Field label={t('events.fieldExternalLink')}>
           <input style={shared.input} value={form.external_link} onChange={set('external_link')} placeholder="https://…" />
+        </Field>
+
+        <Field label={t('events.fieldStatsimAirports')}>
+          <input
+            style={shared.input}
+            value={form.statsim_airports}
+            onChange={set('statsim_airports')}
+            placeholder="EPWA, EPKK"
+          />
+          <div style={styles.fieldHint}>{t('events.statsimAirportsHint')}</div>
         </Field>
 
         <Field label={t('events.fieldShortDescription')}>
@@ -527,5 +540,6 @@ const styles = {
   },
   row2: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12 },
   fieldLabel: { fontSize: '0.8rem', color: colors.muted, marginBottom: 6, letterSpacing: '0.03em' },
+  fieldHint: { fontSize: '0.74rem', color: colors.mutedDim, marginTop: 5 },
   modalActions: { display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 20 },
 };

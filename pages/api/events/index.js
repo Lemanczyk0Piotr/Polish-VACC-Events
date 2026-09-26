@@ -23,6 +23,7 @@ export default async function handler(req, res) {
     notes,
     short_description,
     external_link,
+    statsim_airports,
   } = req.body || {};
 
   if (!title || !event_date) {
@@ -41,6 +42,7 @@ export default async function handler(req, res) {
     notes: notes || null,
     short_description: short_description || null,
     external_link: external_link || null,
+    statsim_airports: statsim_airports || null,
   };
 
   try {
